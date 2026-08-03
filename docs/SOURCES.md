@@ -95,5 +95,91 @@ have been pulled yet.
 
 Published GPU rental benchmarks and public compute-price indices. This
 leg is explicitly the weakest in the project's methodology (see
-`paper/main.tex`, Limitations) — document exactly which series is used
-and its caveats here once selected.
+`paper/main.tex`, Limitations).
+
+**Survey conducted 2026-08-03 (GitHub issue #15). Headline finding: there
+is no free, redistributable compute-price index of comparable quality to
+the power data.** This asymmetry is structural, not incidental, and the
+paper must state it plainly: the cost leg of the spread rests on open
+regulatory data (ENTSO-E, ECB), while the revenue leg rests on
+proprietary commercial data that this project cannot republish. Any
+headroom figure inherits the weaker of the two.
+
+Candidates evaluated:
+
+### Silicon Data — H100 Rental Price Index (ticker SDH100RT)
+
+- <https://www.silicondata.com/products/silicon-index/h100>
+- A genuine daily-published index with a stated methodology: observations
+  from "cloud providers, colocation markets, brokered cluster sales, and
+  private rental platforms", standardised for machine specs, rental terms,
+  platform performance and geolocation, with outlier filtering. Claims
+  coverage of ~95% of tracked neo-cloud GPU providers and 100% of major
+  hyperscalers, "more than 80% of the available global GPU rental market".
+  Reports neo-cloud and hyperscaler segments separately.
+- Level displayed as **USD 2.53 / GPU-hour** when retrieved 2026-08-03.
+  **Caveat: the page does not state an as-of date for that level**, which
+  by this project's own rules disqualifies it from `/data/final` as-is —
+  a value without an as_of_date cannot be published here.
+- **Historical series is paywalled** (subscription portal, 7-day trial).
+- Verdict: cite as an external cross-check with attribution; cannot be
+  redistributed, cannot be the primary series for a reproducible pipeline.
+
+### GetDeploying — GPU Rental Price Index
+
+- <https://getdeploying.com/gpu-price-index>, API at
+  <https://getdeploying.com/api>
+- Broadest coverage found: 71 providers, 98 GPU models, 43,534 weekly
+  observations since July 2024, collected as often as every 15 minutes,
+  panel reviewed each January and July. Index page updated 2026-08-03.
+- API is **USD 299/month or USD 2,499/year**, 3,000 requests/day, bearer
+  token required.
+- **Terms explicitly prohibit reselling raw data feeds.** This is
+  incompatible with publishing derived values under CC-BY-4.0 in
+  `/data/final` without a licence negotiation.
+- Verdict: best coverage, but the licence — not the price — is the
+  blocker.
+
+### ComputePrices.com
+
+- <https://computeprices.com/> — "collected automatically from public
+  sources and provider APIs". No open dataset, no repo, no stated reuse
+  licence, "All rights reserved".
+- Verdict: unusable as a citable primary source; no methodology published.
+
+### Vast.ai marketplace API
+
+- <https://docs.vast.ai/> — API key is free to obtain but requires an
+  account; marketplace spot rates.
+- Verdict: usable mechanically, but a decentralised spot marketplace of
+  heterogeneous consumer and datacentre hardware is **not** a proxy for
+  the contract price a datacentre operator actually earns. Wrong
+  denominator for this model. Possible use as a lower-bound sanity check
+  only.
+
+### Recommended approach (not yet implemented)
+
+Build a **transparent first-party index** in `pipelines/compute_price.py`:
+scrape or query the *published* on-demand price pages of a fixed,
+documented basket of providers (hyperscalers plus named neoclouds), record
+each observation with its own `source_url` and `as_of_date`, and publish
+the derived aggregate. Published prices are facts about a public offer and
+are recordable with attribution; this keeps `/data/final` fully
+reproducible and redistributable. The proprietary indices above then serve
+as an external validation cross-check cited in the paper — never copied
+into the dataset.
+
+Two limitations of that approach must be stated in the paper up front:
+
+1. **On-demand list price is not the realised price.** Large operators
+   transact on multi-year reserved contracts at material discounts, and
+   those contract prices are confidential — the same problem the power leg
+   has with PPAs. Reserved-vs-on-demand discounts are publicly advertised
+   by some providers and should be recorded where available.
+2. **Segment dispersion is large.** Hyperscaler and neocloud list prices
+   for the same accelerator differ by a multiple, not a few percent. A
+   single blended index would obscure exactly the dispersion this project
+   is trying to measure, so the basket must be reported by segment.
+   (The specific spread quoted in secondary summaries is not recorded here
+   because it has not been verified against first-party pages — do that
+   before any such figure enters the paper.)

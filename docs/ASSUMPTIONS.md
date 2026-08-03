@@ -39,20 +39,49 @@ challenged or revised later without archaeology.
   because it is a first-party, open, real-time regulatory API. This
   should be revisited if any zone-specific data quality issue is found.
 
-## Not yet decided (flagged, not guessed)
+## Model constants (`config/constants.py`)
 
-The following are named as constants in the project brief but have not
-been implemented or chosen yet, because Phase 3 (the model) has not
-started this session:
+- **`DELIVERED_KW = 1.10`**, derived as
+  `(ACCELERATOR_TDP_KW 0.700 + IT_OVERHEAD_KW 0.180) × PUE 1.25`. The
+  decomposition is stated explicitly so each input can be challenged
+  separately rather than arguing about the 1.10 aggregate. None of the
+  three inputs is independently sourced per-site: the 700 W TDP is a
+  nameplate figure, PUE 1.25 is an industry-typical planning figure (and
+  operator-reported PUE is self-reported and unaudited), and the 180 W
+  CPU/NIC/storage overhead share is the residual that reconciles the
+  project brief's own stated TDP, PUE and 1.10 kW figures. Treat any
+  conclusion sensitive to these as weak; the 0.9–1.4 sweep exists for
+  exactly that reason.
+- **PUE sweep bounds 1.10–1.60** are planning bounds chosen to span
+  "about as good as a hyperscale facility credibly claims" to "older or
+  hot-climate colocation". They are not measurements of any site.
+- **Non-power marginal opex has no default and no point estimate**, per
+  the project brief. It is a required argument to
+  `models.spark_spread.shutdown_price()`, and
+  `MARGINAL_OPEX_USD_PER_GPU_HOUR` is deliberately `None` with a test
+  asserting it stays that way, so the omission cannot silently drift into
+  an invented number. No public source for it has been identified — see
+  issue #14. Every headroom figure this project publishes is therefore
+  conditional on an assumed opex and must be labelled as such.
 
-- `delivered_kW` (accelerator TDP × PUE + overhead share) — no default
-  has been set in code yet. When it is, it must live as a single named
-  constant with the 0.9–1.4 sensitivity range from the project brief,
-  not duplicated across modules.
-- Non-power marginal opex range for the shutdown price calculation.
-- PUE default (industry-typical ~1.25 is mentioned in the project brief
-  as a planning figure, but is not yet wired into any code — do not
-  treat it as adopted until it appears in `config/`).
+## The compute-price leg is weaker than the power leg (surveyed 2026-08-03)
+
+The revenue side of the spread has no free, redistributable index
+comparable to ENTSO-E. The two credible indices (Silicon Data SDH100RT,
+GetDeploying) are both paywalled, and GetDeploying's terms explicitly
+forbid redistributing raw data — incompatible with this project's
+CC-BY-4.0 output. See `docs/SOURCES.md` for the full survey and the
+recommended first-party-basket workaround.
+
+Consequences that must not be quietly forgotten:
+
+- The merit-order *ordering* (which hub retires first) depends mainly on
+  the power leg and is comparatively robust. The *absolute level* of the
+  compute price at which any given hub retires depends on the weak leg.
+  These two claims deserve different confidence language in the paper.
+- On-demand list price ≠ realised contract price. This is the exact
+  mirror of the PPA problem on the power side, and it means both legs of
+  the spread are proxies for confidential real transactions.
 
 ## Repository/tooling assumptions
 

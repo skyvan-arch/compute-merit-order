@@ -226,10 +226,30 @@ smooth over it:
   \item \textbf{Gulf and China data, when added, will be
     document-derived} (government/TSO reports, not live APIs), and will
     carry \texttt{confidence=low} accordingly.
-  \item \textbf{The compute-price leg is the weakest input.} Public GPU
-    rental benchmarks are noisy, vary by contract length and
-    availability guarantee, and are not as standardised as wholesale
-    power prices; this is flagged wherever the compute price is used.
+  \item \textbf{The compute-price leg is the weakest input, and the
+    asymmetry is structural.} A survey conducted 2026-08-03
+    (\texttt{docs/SOURCES.md}) found no free, redistributable
+    compute-price index of comparable quality to the power data. The two
+    credible indices identified --- Silicon Data's \texttt{SDH100RT} and
+    GetDeploying's GPU rental price index --- are both paywalled, and the
+    latter's terms explicitly prohibit redistributing raw data feeds,
+    which is incompatible with publishing a CC-BY-4.0 dataset. The cost
+    leg of this spread therefore rests on open regulatory data while the
+    revenue leg rests on proprietary commercial data. We intend to
+    construct a transparent first-party index from published provider
+    price pages instead; until then, every headroom figure inherits the
+    weaker leg.
+  \item \textbf{On-demand list price is not the realised price.} Large
+    operators transact on multi-year reserved contracts at material and
+    confidential discounts. This is the exact mirror of the PPA problem
+    on the power side: \emph{both} legs of the spread are public proxies
+    for confidential real transactions.
+  \item \textbf{Ordering and level have different confidence.} Which hub
+    goes uneconomic first depends mainly on the power leg and is
+    comparatively robust; the absolute compute price at which it happens
+    depends on the weak leg. We hedge these two claims differently
+    throughout, and readers should not transfer confidence from the
+    former to the latter.
 \end{itemize}
 
 \section{Conclusion}
