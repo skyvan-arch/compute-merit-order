@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.uv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Environment / secrets
+.env
+.env.*
+*.token
+
+# Data cache — keep manifests, ignore raw API payloads
+/data/raw/*
+!/data/raw/**/
+!/data/raw/**/MANIFEST.md
+!/data/raw/.gitkeep
+
+# LaTeX build artefacts
+/paper/*.aux
+/paper/*.bbl
+/paper/*.bcf
+/paper/*.blg
+/paper/*.fdb_latexmk
+/paper/*.fls
+/paper/*.log
+/paper/*.out
+/paper/*.run.xml
+/paper/*.synctex.gz
+/paper/*.toc
+# Compiled PDF is a CI build artefact, not hand-committed
+/paper/main.pdf
+
+# OS
+.DS_Store
+Thumbs.db

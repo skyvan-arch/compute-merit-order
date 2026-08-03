@@ -1,0 +1,58 @@
+name: Build paper
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "paper/**"
+      - "figures/**"
+      - "data/final/**"
+  workflow_dispatch: {}
+
+jobs:
+  build-pdf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - name: Regenerate figures from data/final
+        run: uv run python -m figures.build_all
+
+      - name: Check numeric claims in paper match data/final
+        run: uv run pytest tests/test_paper_numbers.py
+
+      - name: Install Tectonic
+        uses: wtfjoke/setup-tectonic@v3
+        with:
+          biber-version: "none"
+
+      - name: Compile paper
+        working-directory: paper
+        run: tectonic main.tex
+
+      - name: Upload PDF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-pdf
+          path: paper/main.pdf
+
+      - name: Publish to gh-pages
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: paper
+          publish_branch: gh-pages
+          keep_files: false
+          exclude_assets: "*.tex,*.bib,*.log,*.aux"

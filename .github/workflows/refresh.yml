@@ -1,0 +1,49 @@
+name: Weekly data refresh
+
+# STUB: only the ENTSO-E DE-LU pipeline exists as of 2026-08. This workflow
+# is wired end-to-end for that one source; extend the "Run pipelines" step
+# as pipelines/*.py grows (see docs/SOURCES.md and open Issues for the
+# remaining hubs/phases).
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - name: Run pipelines
+        env:
+          ENTSOE_API_TOKEN: ${{ secrets.ENTSOE_API_TOKEN }}
+        run: uv run python -m pipelines.entsoe --zone DE-LU --months 36
+
+      - name: Check for material changes (>2%)
+        id: diff
+        run: uv run python -m models.diff_check --threshold 0.02
+
+      - name: Open PR if changed
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "data: weekly refresh"
+          title: "Weekly data refresh — material changes detected"
+          body: ${{ steps.diff.outputs.summary }}
+          branch: data-refresh/weekly
