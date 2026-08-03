@@ -157,7 +157,46 @@ Candidates evaluated:
   denominator for this model. Possible use as a lower-bound sanity check
   only.
 
-### Recommended approach (not yet implemented)
+### Decision (2026-08-03): free sources only
+
+Following the project constraint recorded in `docs/METHODOLOGY.md`, both
+Silicon Data and GetDeploying are **rejected outright** — not merely
+deprioritised. They are not cited as cross-checks either, because a
+comparison a reader cannot reproduce without a subscription is not a
+check. The implemented approach below is the whole of the compute-price
+leg.
+
+### Implemented: Azure Retail Prices API (free, unauthenticated)
+
+- `https://prices.azure.com/api/retail/prices` — no API key, no account,
+  no rate-limit tier. Returns advertised hourly prices per VM SKU per
+  region with `effectiveStartDate`/`effectiveEndDate`.
+- Implemented in `pipelines/compute_price.py`. First real values landed in
+  `data/final/compute_price_observations.csv` and
+  `data/final/compute_price_by_model.csv` on 2026-08-03.
+- Accelerators per SKU come from **MicrosoftDocs/azure-compute-docs**, the
+  public repo behind Microsoft Learn, recorded per-SKU with its own
+  `source_url` in `config/gpu_skus.py`. Chosen over the rendered Learn
+  pages because it is version-controlled and directly citable.
+- Filtering rules and their justifications are documented in
+  `parse_price_rows()` and pinned by tests. The non-obvious ones: Windows
+  rows are excluded because they embed OS licensing, which is not a cost
+  of running an accelerator; Reservation rows are excluded because they
+  quote a total rather than an hourly rate; "Low Priority" is excluded as
+  a distinct product from Spot.
+
+**Known gaps in the current basket**, all of which understate dispersion:
+
+1. **Hyperscaler-only.** No neocloud provider is in the basket yet, so the
+   segment comparison the methodology demands cannot yet be made within a
+   consistent method. Tracked in issue #19.
+2. **Azure-only.** AWS and GCP both publish free price lists and should be
+   added for a genuine hyperscaler cohort rather than one vendor.
+3. **List price only.** Reserved/committed-use discounts are advertised by
+   these vendors and should be captured; realised contract prices remain
+   confidential and unobtainable.
+
+### Original recommendation (superseded by the implementation above)
 
 Build a **transparent first-party index** in `pipelines/compute_price.py`:
 scrape or query the *published* on-demand price pages of a fixed,

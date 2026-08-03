@@ -165,9 +165,57 @@ series are both in \texttt{data/final}}.
 \section{Regional cost surfaces}
 \label{sec:regional}
 
-\todopending{per-hub power price tables and figures once more than one
-hub has real data --- this draft has only DE-LU pipeline-ready, with no
-pulled values yet}.
+\subsection{The compute price leg}
+
+Our first populated series is the revenue side of the spread. Because no
+free, redistributable compute-price index exists
+(Section~\ref{sec:limitations}), we construct one from published cloud
+list prices, which are facts about public offers and can therefore be
+recorded with attribution and republished. Accelerator counts per VM SKU
+are read from the vendor's own public documentation repository rather
+than inferred, so that a price per instance-hour can be divided into a
+price per GPU-hour without guesswork.
+
+% CMO-CHECK: compute_price_by_model.csv | segment=hyperscaler,accelerator_model=NVIDIA H100 | mean_usd_per_gpu_hour | 14.1335
+% CMO-CHECK: compute_price_by_model.csv | segment=hyperscaler,accelerator_model=NVIDIA A100 | mean_usd_per_gpu_hour | 4.285222222222222
+As of 2026-08-03, Azure's published on-demand list price for the
+\texttt{ND96isr\_H100\_v5} SKU averages
+\SI{14.13}{\usd} per GPU-hour across the regions sampled, and the A100
+\texttt{NC*ads\_A100\_v4} family averages \SI{4.29}{\usd} per GPU-hour
+(Figure~\ref{fig:compute-price}).
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.85\textwidth]{../figures/compute_price_per_gpu_hour.png}
+  \caption{Published Azure GPU prices per GPU-hour. Bars span the
+  regional minimum to maximum. On-demand list price is an upper bound on
+  realised revenue; spot is shown for contrast, not as a revenue proxy.}
+  \label{fig:compute-price}
+\end{figure}
+
+Two observations follow immediately, and both bear on the central thesis.
+
+First, \textbf{the dispersion within the compute price is at least as
+large as the dispersion in power costs that motivates this paper}. Spot
+prices for the same H100 silicon clear roughly a fifth of the on-demand
+list price. A merit order computed against ``the'' compute price is
+therefore underdetermined until one says \emph{which} compute price;
+Section~\ref{sec:merit-order} must present a band, not a line.
+
+Second, \textbf{the hyperscaler on-demand list price is not the price
+that disciplines the marginal operator}. Published neocloud index levels
+sit near the hyperscaler \emph{spot} price rather than its list price,
+which suggests the marginal capacity-clearing price is closer to the
+former. We flag this as a hypothesis to test rather than a result: our
+own basket currently contains only hyperscaler SKUs, and a neocloud leg
+is required before the comparison can be made within one consistent
+methodology (see Section~\ref{sec:limitations}).
+
+\subsection{The power cost leg}
+
+\todopending{per-hub power price tables and figures --- the DE-LU
+pipeline is implemented and tested but requires an API token that was not
+available; no values have been pulled}.
 
 \section{The merit order}
 \label{sec:merit-order}
@@ -233,12 +281,21 @@ smooth over it:
     credible indices identified --- Silicon Data's \texttt{SDH100RT} and
     GetDeploying's GPU rental price index --- are both paywalled, and the
     latter's terms explicitly prohibit redistributing raw data feeds,
-    which is incompatible with publishing a CC-BY-4.0 dataset. The cost
-    leg of this spread therefore rests on open regulatory data while the
-    revenue leg rests on proprietary commercial data. We intend to
-    construct a transparent first-party index from published provider
-    price pages instead; until then, every headroom figure inherits the
-    weaker leg.
+    which is incompatible with publishing a CC-BY-4.0 dataset. This
+    project therefore adopts a free-sources-only constraint and rejects
+    both, constructing its own index from vendor-published list prices
+    instead (Section~\ref{sec:regional}). We take the weaker source and
+    say so rather than compromise reproducibility, but the reader should
+    note that our compute-price series is consequently narrower than the
+    commercial indices it replaces.
+  \item \textbf{The compute-price basket is currently one vendor and one
+    segment.} It contains Azure SKUs only, so it measures hyperscaler
+    list pricing rather than the market. AWS and GCP publish free price
+    lists and belong in the cohort; more importantly, no neocloud
+    provider is represented yet, which means the segment dispersion this
+    paper argues is central cannot yet be measured within a single
+    consistent methodology. Every dispersion figure we report is
+    therefore a lower bound.
   \item \textbf{On-demand list price is not the realised price.} Large
     operators transact on multi-year reserved contracts at material and
     confidential discounts. This is the exact mirror of the PPA problem

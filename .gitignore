@@ -16,8 +16,10 @@ htmlcov/
 .env.*
 *.token
 
-# Data cache — keep manifests, ignore raw API payloads
-/data/raw/*
+# Data cache — keep manifests, ignore raw API payloads.
+# Note the `/**` rather than `/*`: `/*` only matches direct children, so
+# nested per-source payloads (data/raw/<source>/*.json) escaped the ignore.
+/data/raw/**
 !/data/raw/**/
 !/data/raw/**/MANIFEST.md
 !/data/raw/.gitkeep

@@ -46,6 +46,39 @@ This is implemented end-to-end once, for ENTSO-E DE-LU
 (`pipelines/entsoe.py`), before being repeated for other sources — see
 `README.md` Status and the GitHub issue tracker for what's next.
 
+## Source eligibility: free data only (project constraint, set 2026-08-03)
+
+**A source is only eligible if it is free to access and permits
+redistribution of derived values.** This is a hard constraint on the
+project, not a preference, and it follows from what the project claims to
+be: an openly auditable dataset published under CC-BY-4.0. A number a
+stranger cannot fetch and re-derive without paying for it is not
+auditable, and a number we are contractually barred from republishing
+cannot go into `/data/final` at all.
+
+Concretely this rules out:
+
+- Paywalled indices, even where the headline level is visible for free
+  (Silicon Data `SDH100RT`).
+- Sources whose terms prohibit redistributing raw data, regardless of
+  price (GetDeploying).
+- Aggregators with no published methodology and "all rights reserved"
+  (ComputePrices.com).
+
+And it favours:
+
+- Regulatory and central-bank data (ENTSO-E, ECB).
+- Vendor-published list prices and public API price lists, which are
+  facts about public offers (Azure Retail Prices API — free, no
+  authentication).
+- Vendor documentation in open repositories (MicrosoftDocs/
+  azure-compute-docs) for reference values such as accelerators per SKU.
+
+Where a free source is weaker than a paid one, **we take the weaker
+source and say so in the paper** rather than compromising
+reproducibility. See `docs/SOURCES.md` for the compute-price survey where
+this trade-off was made explicitly.
+
 ## Validation rules (non-negotiable)
 
 - **No invented numbers.** A missing data point is a null value with an

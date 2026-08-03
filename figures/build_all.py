@@ -12,10 +12,11 @@ from __future__ import annotations
 import sys
 from collections.abc import Callable
 
-from figures import entsoe_price_figure
+from figures import compute_price_figure, entsoe_price_figure
 
 GENERATORS: list[tuple[str, Callable[[], object]]] = [
     ("entsoe_price_figure", entsoe_price_figure.main),
+    ("compute_price_figure", compute_price_figure.main),
 ]
 
 

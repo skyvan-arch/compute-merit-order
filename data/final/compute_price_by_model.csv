@@ -1,0 +1,3 @@
+segment,accelerator_model,mean_usd_per_gpu_hour,min_usd_per_gpu_hour,max_usd_per_gpu_hour,observation_count,providers,regions,as_of_date,price_source_url,price_basis,confidence
+hyperscaler,NVIDIA A100,4.285222222222222,3.673,4.775,9,azure,"eastus,northeurope,westeurope",2026-08-03,https://prices.azure.com/api/retail/prices?$filter=armSkuName eq 'Standard_NC24ads_A100_v4' and armRegionName eq 'eastus',published_on_demand_list,high
+hyperscaler,NVIDIA H100,14.1335,12.29,15.977,2,azure,"eastus,westeurope",2026-08-03,https://prices.azure.com/api/retail/prices?$filter=armSkuName eq 'Standard_ND96isr_H100_v5' and armRegionName eq 'eastus',published_on_demand_list,high
