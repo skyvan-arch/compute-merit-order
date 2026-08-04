@@ -1,0 +1,8 @@
+- public_power_fr_2026-01-01_2026-08-01.json: https://api.energy-charts.info/public_power {'country': 'fr', 'start': '2026-01-01', 'end': '2026-08-01'} (fetched 2026-08-04)
+- installed_power_fr.json: https://api.energy-charts.info/installed_power {'country': 'fr', 'time_step': 'yearly'} (fetched 2026-08-04)
+- public_power_de_2026-01-01_2026-08-01.json: https://api.energy-charts.info/public_power {'country': 'de', 'start': '2026-01-01', 'end': '2026-08-01'} (fetched 2026-08-04)
+- installed_power_de.json: https://api.energy-charts.info/installed_power {'country': 'de', 'time_step': 'yearly'} (fetched 2026-08-04)
+- public_power_nl_2026-01-01_2026-08-01.json: https://api.energy-charts.info/public_power {'country': 'nl', 'start': '2026-01-01', 'end': '2026-08-01'} (fetched 2026-08-04)
+- installed_power_nl.json: https://api.energy-charts.info/installed_power {'country': 'nl', 'time_step': 'yearly'} (fetched 2026-08-04)
+- public_power_be_2026-01-01_2026-08-01.json: https://api.energy-charts.info/public_power {'country': 'be', 'start': '2026-01-01', 'end': '2026-08-01'} (fetched 2026-08-04)
+- installed_power_be.json: https://api.energy-charts.info/installed_power {'country': 'be', 'time_step': 'yearly'} (fetched 2026-08-04)
