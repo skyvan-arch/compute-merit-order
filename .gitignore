@@ -16,6 +16,13 @@ htmlcov/
 .env.*
 *.token
 
+# Interim is LOCAL WORKING DATA and must never be published: it holds the
+# full un-gated series including bidding zones whose upstream licence forbids
+# redistribution. Only /data/final is published, and only after the licence
+# gate in pipelines/power_price.py has run.
+/data/interim/**
+!/data/interim/.gitkeep
+
 # Data cache — keep manifests, ignore raw API payloads.
 # Note the `/**` rather than `/*`: `/*` only matches direct children, so
 # nested per-source payloads (data/raw/<source>/*.json) escaped the ignore.

@@ -226,13 +226,24 @@ def monthly_stats(hourly: pd.DataFrame, fx_usd_per_eur: float, fx_source_url: st
 
 
 def zone_summary(stats: pd.DataFrame) -> pd.DataFrame:
-    """Collapse monthly stats to one row per zone over the whole window."""
+    """Collapse monthly stats to one row per zone over the whole window.
+
+    Weighted by hour_count, NOT a flat mean of monthly means. The sample
+    contains partial boundary months -- the first is a 1-hour stub from the
+    prior year's final UTC hour -- and giving a 1-hour month the same weight
+    as a 744-hour month distorts every zone mean by up to 17% and can reorder
+    zones that sit within a fraction of a percent of each other.
+    """
+    stats = stats.copy()
+    stats["_weighted_usd"] = stats["mean_usd_kwh"] * stats["hour_count"]
+    stats["_weighted_eur"] = stats["mean_eur_mwh"] * stats["hour_count"]
+
     grouped = stats.groupby(["bzn", "zone_name", "country", "role"])
     summary = grouped.agg(
-        mean_usd_kwh=("mean_usd_kwh", "mean"),
+        _sum_weighted_usd=("_weighted_usd", "sum"),
+        _sum_weighted_eur=("_weighted_eur", "sum"),
         min_month_usd_kwh=("mean_usd_kwh", "min"),
         max_month_usd_kwh=("mean_usd_kwh", "max"),
-        mean_eur_mwh=("mean_eur_mwh", "mean"),
         negative_hours=("negative_hours", "sum"),
         hour_count=("hour_count", "sum"),
         months_covered=("month", "nunique"),
@@ -242,6 +253,10 @@ def zone_summary(stats: pd.DataFrame) -> pd.DataFrame:
         fx_source_url=("fx_source_url", "first"),
         as_of_date=("as_of_date", "first"),
     ).reset_index()
+
+    summary["mean_usd_kwh"] = summary["_sum_weighted_usd"] / summary["hour_count"]
+    summary["mean_eur_mwh"] = summary["_sum_weighted_eur"] / summary["hour_count"]
+    summary = summary.drop(columns=["_sum_weighted_usd", "_sum_weighted_eur"])
     summary["confidence"] = "high"
     return summary.sort_values("mean_usd_kwh").reset_index(drop=True)
 

@@ -30,34 +30,31 @@ which a fleet is uneconomic to run. Because regional power costs differ,
 shutdown prices differ, which is said to imply a global merit order in
 which compute capacity curtails in a predictable geographic sequence. We
 construct that merit order from open data for seven European bidding zones
-and find that \textbf{it exists, is computable, and is not binding}. Power
-ranges from \SI{1.0}{\percent} of revenue at H100 on-demand list prices to
-\SI{17.4}{\percent} at A100 spot prices, so the answer depends critically
-on which revenue basis is used --- a choice the spark-spread framing
-obscures and which moves the result by more than any parameter in the cost
-model. Headroom over avoidable cost is at least \SI{76}{\percent} on every
-basis and in every zone we test, no zone is uneconomic anywhere in the grid
-of assumptions, and compute prices would have to fall a further
-\SIrange{76}{99}{\percent} before the first zone curtails. Inverting the
-cost identity shows the result does not depend on our sample: even at the
-cheapest compute price we observe, a zone would need electricity at
-\SI{0.70}{\usd\per\kWh} --- five times the dearest zone we measure, and far
-above any industrial tariff worldwide --- before curtailment became
-rational. The dispersion in
-shutdown prices across our sample is \num{1.53}x, not the \num{3}x the
-thesis assumes, and adding non-power operating cost compresses it further
-toward \num{1.17}x. We also find the supply-rich/constrained hub taxonomy
-does not predict cost in this sample: the cheapest zone is France, nominally
-constrained, and Norway NO2, nominally supply-rich, is the second dearest.
-Separately, we recover Azure's \num{1}, \num{3} and \num{5}-year committed
-rates from published reservation data --- a \SI{60}{\percent} discount to
-list that is routinely described as confidential --- and use them as the
-revenue basis a committed operator actually faces.
-The spark-spread analogy fails quantitatively because fuel is
-\SIrange{60}{90}{\percent} of a gas plant's marginal cost while power is
-single-digit percentages of a GPU fleet's revenue on any realistic basis. We state the conditions
-under which the thesis would become true, and note that the interesting
-economics lies in capital recovery and siting, not in shutdown.
+and find that \textbf{it exists, binds in roughly two hundredths of one
+per cent of hours, and is worth about a dollar per GPU per year}. Evaluated
+at hourly resolution --- the resolution at which a curtailment decision is
+actually taken --- the right to stop running is an hourly option on the
+spread. Its intrinsic value is \SI{1.30}{\usd} per GPU-year in Belgium,
+\SI{0.67}{\usd} in the Netherlands, \SI{0.12}{\usd} in Germany/Luxembourg
+and exactly zero in the other four zones, and it is non-zero only at the
+cheapest of the nine revenue bases we measure. Against roughly
+\SI{7000}{\usd} per GPU-year of revenue that is about
+\SI{0.02}{\percent}. We stress that an earlier version of this analysis
+evaluated the same data against \emph{annual mean} prices and concluded
+that no zone is ever uneconomic; that conclusion was an artefact of
+aggregation, and Belgium's dearest hour exceeds its own break-even price by
+\SI{56}{\percent}. Power ranges from \SI{1.0}{\percent} of revenue at H100
+on-demand list prices to \SI{16.5}{\percent} at A100 spot, so the answer
+depends far more on which revenue basis is chosen than on anything in the
+cost model. Cross-zone dispersion in shutdown prices is \num{1.65}x on our
+published sample, compressing to \num{1.19}x once non-power operating cost
+is added --- an algebraic property, not a sample artefact. We recover
+Azure's \num{1}, \num{3} and \num{5}-year committed rates from published
+reservation data, a discount to list routinely described as confidential.
+The spark-spread analogy survives only in a weak form: the mechanism is
+real and priceable, but at current prices it is worth two basis points of
+revenue, and the economics that matter for AI infrastructure lie in capital
+recovery and siting rather than in dispatch.
 \end{abstract}
 
 \tableofcontents
@@ -251,8 +248,8 @@ across that sweep.
 
 \subsection{Power}
 
-% CMO-CHECK: power_price_by_zone.csv | bzn=FR | mean_usd_kwh | 0.084728
-% CMO-CHECK: power_price_by_zone.csv | bzn=AT | mean_usd_kwh | 0.129565
+% CMO-CHECK: power_price_by_zone.csv | bzn=FR | mean_usd_kwh | 0.078652
+% CMO-CHECK: power_price_by_zone.csv | bzn=AT | mean_usd_kwh | 0.129387
 Across the seven publishable zones, 2026 year-to-date mean day-ahead
 prices run from \SI{0.0847}{\usd\per\kWh} (France) to
 \SI{0.1296}{\usd\per\kWh} (Austria), a spread of \num{1.53}x. Negative
@@ -263,7 +260,7 @@ negative and the shutdown constraint cannot bind at all in those hours.
 \paragraph{The hub taxonomy does not predict cost.} The project's own
 supply-rich versus constrained classification fails on this sample. The
 cheapest zone is France, classified constrained. Norway NO2, classified
-supply-rich, is the second dearest at \SI{0.1142}{\usd\per\kWh} --- it is
+supply-rich, is the second dearest on annual means at \SI{0.1173}{\usd\per\kWh} --- it is
 the southern Norwegian zone, heavily interconnected to Germany and Great
 Britain, and therefore prices toward its neighbours rather than toward
 Nordic hydro. Any hub-level narrative that assumes ``Nordics are cheap''
@@ -273,7 +270,7 @@ intuition behind the merit-order thesis is weaker than it appears.
 \subsection{Compute}
 
 % CMO-CHECK: compute_price_by_model.csv | accelerator_model=NVIDIA H100,price_type=on_demand | mean_usd_per_gpu_hour | 14.1335
-% CMO-CHECK: compute_price_by_model.csv | accelerator_model=NVIDIA A100,price_type=on_demand | mean_usd_per_gpu_hour | 4.3159
+% CMO-CHECK: compute_price_by_model.csv | accelerator_model=NVIDIA A100,price_type=on_demand | mean_usd_per_gpu_hour | 4.2853
 As of 2026-08-03, Azure's published on-demand list price averages
 \SI{14.13}{\usd} per GPU-hour for H100 and \SI{4.32}{\usd} per GPU-hour for
 A100 across the regions sampled (Figure~\ref{fig:compute-price}). Spot
@@ -311,38 +308,96 @@ between them is the finding.
 
 \subsection{The order exists}
 
-The retirement sequence is well defined. At the midpoint opex assumption
+The curtailment sequence is well defined. At the midpoint opex assumption
 and H100 prices, zones would go uneconomic in the order Austria, Norway
 NO2, Germany/Luxembourg, Belgium, Netherlands, Sweden SE4, France. So the
 qualitative claim --- that a geographic sequence exists and is computable
 from public data --- survives.
 
-\subsection{But it is not binding}
+\subsection{Resolution matters more than anything else in this model}
 
-% CMO-CHECK: merit_order_summary.csv | benchmark_id=h100_on_demand,opex_assumption_usd_gpu_hour=0.05 | max_power_share_of_revenue_pct | 0.010084
-% CMO-CHECK: merit_order_summary.csv | benchmark_id=a100_spot,opex_assumption_usd_gpu_hour=0.05 | max_power_share_of_revenue_pct | 0.174488
-Electricity is \SI{1.01}{\percent} of revenue in the dearest zone at H100
-on-demand list prices, and \SI{17.4}{\percent} at A100 spot prices. That
-range is the most important number in this paper: the spark-spread analogy
-is hopeless at the top of it and merely weak at the bottom, and which end
-applies is decided entirely by the revenue basis, not by anything about
-electricity.
+An earlier version of this analysis compared each zone's \emph{annual mean}
+power price against the compute price, and concluded that no zone is ever
+uneconomic. That conclusion was false, and the way it was false is the most
+useful methodological result in this paper.
 
-% CMO-CHECK: merit_order_summary.csv | benchmark_id=h100_on_demand,opex_assumption_usd_gpu_hour=0.05 | min_headroom_pct | 0.986378
-% CMO-CHECK: merit_order_summary.csv | benchmark_id=a100_spot,opex_assumption_usd_gpu_hour=0.05 | min_headroom_pct | 0.764297
-% CMO-CHECK: merit_order_summary.csv | benchmark_id=h100_on_demand,opex_assumption_usd_gpu_hour=0.05 | zones_uneconomic | 0
-Minimum headroom over avoidable cost is \SI{98.6}{\percent} at H100
-on-demand list and \SI{76.4}{\percent} at A100 spot, and \emph{no zone is
-uneconomic under any combination of price basis, zone and opex we test}.
-Compute prices would have to fall a further \SIrange{76}{99}{\percent}
-before the first zone --- Austria --- curtails. A merit order whose first
-event requires the cheapest observed price to fall by three quarters again
-is not a description of any plausible near-term market.
+Curtailment is an hourly decision. An operator compares this settlement
+period's avoidable cost against this period's revenue, and a spark spread
+is evaluated per period for exactly that reason. Collapsing
+\num{36281} zone-hours into seven annual means destroys the upper tail,
+and the upper tail is the entire phenomenon. Belgium's mean power price is
+\SI{0.114}{\usd\per\kWh}; its dearest hour is \SI{1.086}{\usd\per\kWh},
+nearly ten times higher and \SI{56}{\percent} above its own break-even
+threshold. Aggregation, not economics, produced the null.
+
+\subsection{The right to curtail, priced}
+
+Evaluated hourly, the right to stop running when the spread is negative is
+a strip of hourly options on that spread, with strike equal to the compute
+price. Its intrinsic value over the sample is
+\begin{equation}
+  \label{eq:option}
+  V = \sum_{t} \max\!\left(0,\;
+  \text{avoidable\_cost}_{t} - \text{compute\_price}\right),
+\end{equation}
+the loss avoided by curtailing rather than running regardless. This is
+intrinsic value only --- no volatility model, no discounting --- and is
+therefore a lower bound.
+
+% CMO-CHECK: curtailment_option_value.csv | bzn=BE,benchmark_id=a100_spot,opex_assumption_usd_gpu_hour=0.05 | option_value_usd_per_gpu_year | 1.3012
+% CMO-CHECK: curtailment_option_value.csv | bzn=NL,benchmark_id=a100_spot,opex_assumption_usd_gpu_hour=0.05 | option_value_usd_per_gpu_year | 0.6744
+% CMO-CHECK: curtailment_option_value.csv | bzn=FR,benchmark_id=a100_spot,opex_assumption_usd_gpu_hour=0.05 | option_value_usd_per_gpu_year | 0.0
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}llrrr@{}}
+\toprule
+Zone & Role & Uneconomic h/yr & Option value (\si{\usd}/GPU-yr) \\
+\midrule
+Belgium            & constrained & 5.07 & 1.30 \\
+Netherlands        & constrained & 3.38 & 0.67 \\
+Germany/Luxembourg & constrained & 3.38 & 0.12 \\
+Austria            & constrained & 0.00 & 0.00 \\
+Sweden SE4         & supply-rich & 0.00 & 0.00 \\
+France             & constrained & 0.00 & 0.00 \\
+Norway NO2         & supply-rich & 0.00 & 0.00 \\
+\bottomrule
+\end{tabular}
+\caption{Intrinsic value of the right to curtail, at the A100 spot price
+(\SI{0.86}{\usd}/GPU-h) and \SI{0.05}{\usd}/GPU-h non-power opex --- the
+only one of our nine revenue bases at which the option is ever in the
+money. Annualised from a partial-year sample.}
+\label{tab:option-value}
+\end{table}
+
+So the merit order is worth roughly \SI{1.30}{\usd} per GPU-year in
+Belgium, and nothing at all in four of seven zones. Against on the order of
+\SI{7000}{\usd} per GPU-year of revenue that is about two basis points.
+
+This is a stronger statement than the null it replaces, in three ways.
+It is positive rather than absent: the mechanism exists, binds, and has a
+measurable price. It is a claim about a distribution rather than a mean,
+so it does not evaporate under reaggregation. And it is robust to our
+sample restrictions, because it is a tail statistic --- adding the
+withheld high-price zones can only increase it, and adding cheap zones
+such as ERCOT West contributes exactly zero.
+
+\subsection{The ordering is not what the annual means suggested}
+
+% CMO-CHECK: curtailment_option_value.csv | bzn=BE,benchmark_id=a100_spot,opex_assumption_usd_gpu_hour=0.05 | max_hourly_avoidable_cost | 1.2443
+Ranking zones on the tail that governs curtailment, rather than on the
+mean, reorders them substantially. Belgium moves from fifth to first.
+Norway NO2 --- which on annual means looked anomalously expensive for a
+nominally supply-rich zone, and which we previously reported as such ---
+moves to \emph{last}: it has the lowest maximum hourly cost in the sample
+and never goes uneconomic. On the statistic that matters, Norwegian hydro
+behaves exactly as the supply-rich classification predicts. Our earlier
+claim that the hub taxonomy fails was itself an artefact of the wrong
+statistic, and we withdraw it.
 
 \subsection{The dispersion is smaller than assumed}
 
-% CMO-CHECK: merit_order_summary.csv | benchmark_id=h100_on_demand,opex_assumption_usd_gpu_hour=0.0 | shutdown_dispersion_ratio | 1.5292
-% CMO-CHECK: merit_order_summary.csv | benchmark_id=h100_on_demand,opex_assumption_usd_gpu_hour=0.2 | shutdown_dispersion_ratio | 1.1682
+% CMO-CHECK: merit_order_summary.csv | benchmark_id=h100_on_demand,opex_assumption_usd_gpu_hour=0.0 | shutdown_dispersion_ratio | 1.6451
+% CMO-CHECK: merit_order_summary.csv | benchmark_id=h100_on_demand,opex_assumption_usd_gpu_hour=0.2 | shutdown_dispersion_ratio | 1.1948
 The thesis assumes roughly \num{3}x variation. We measure \num{1.53}x at
 zero opex, falling to \num{1.17}x at \SI{0.20}{\usd} per GPU-hour.
 
@@ -361,13 +416,10 @@ as --- or larger than --- the entire power cost, the dispersion that
 actually drives a merit order is materially below the dispersion in
 electricity prices that motivates it.
 
-\subsection{The result does not depend on our sample}
+\subsection{Break-even power prices, and the limits of a mean-based test}
 
-The obvious objection to a negative result drawn from seven European zones
-is that a wider sample would change it. It would not, and this can be
-settled without collecting a single additional price. Inverting
-Equation~\eqref{eq:shutdown-price} gives the electricity price at which a
-fleet would sit exactly at its shutdown price:
+Inverting Equation~\eqref{eq:shutdown-price} gives the electricity price at
+which a fleet sits exactly at its shutdown price:
 \begin{equation}
   \label{eq:break-even}
   p^{*}_{\text{kWh}} =
@@ -375,12 +427,11 @@ fleet would sit exactly at its shutdown price:
        {\text{delivered\_kW}}.
 \end{equation}
 
-% CMO-CHECK: break_even_power_price.csv | benchmark_id=a100_spot,opex_assumption_usd_gpu_hour=0.05 | break_even_power_usd_kwh | 0.6971
+% CMO-CHECK: break_even_power_price.csv | benchmark_id=a100_spot,opex_assumption_usd_gpu_hour=0.05 | break_even_power_usd_kwh | 0.7396
 % CMO-CHECK: break_even_power_price.csv | benchmark_id=h100_on_demand,opex_assumption_usd_gpu_hour=0.05 | break_even_power_usd_kwh | 12.8032
-Evaluated at the cheapest compute price we observe --- A100 spot, at
-\SI{0.82}{\usd} per GPU-hour --- a zone would need electricity at
-\SI{0.697}{\usd\per\kWh} before curtailment became rational. At H100
-on-demand list prices it would need \SI{12.80}{\usd\per\kWh}.
+At the cheapest compute price we observe --- A100 spot, \SI{0.86}{\usd} per
+GPU-hour --- the threshold is \SI{0.740}{\usd\per\kWh}. At H100 on-demand
+list prices it is \SI{12.80}{\usd\per\kWh}.
 
 \begin{table}[h]
 \centering
@@ -388,34 +439,37 @@ on-demand list prices it would need \SI{12.80}{\usd\per\kWh}.
 \toprule
 Compute price basis & \si{\usd}/GPU-h & Break-even power (\si{\usd\per\kWh}) \\
 \midrule
-A100 spot            &  0.82 &  0.70 \\
-A100 reserved 3-year &  1.66 &  1.46 \\
+A100 spot            &  0.86 &  0.74 \\
+A100 reserved 3-year &  1.59 &  1.40 \\
 H100 spot            &  2.61 &  2.33 \\
 H100 reserved 5-year &  5.65 &  5.09 \\
 H100 on-demand list  & 14.13 & 12.80 \\
 \bottomrule
 \end{tabular}
 \caption{Electricity price required to force curtailment, at
-\SI{0.05}{\usd}/GPU-h non-power opex. For comparison, the dearest zone in
-our sample is Austria at \SI{0.130}{\usd\per\kWh} and the cheapest is
-France at \SI{0.085}{\usd\per\kWh}.}
+\SI{0.05}{\usd}/GPU-h non-power opex.}
 \label{tab:break-even}
 \end{table}
 
-The dearest zone we measure is Austria at \SI{0.130}{\usd\per\kWh}. The
-break-even price at the \emph{cheapest} observed compute price is more than
-five times that, and roughly an order of magnitude above the industrial
-tariffs prevailing in the hubs this project set out to compare, including
-the expensive ones. Adding ERCOT West at the cheap end or Ireland and
-Singapore at the dear end moves zones within the ladder; it does not bring
-any of them within a factor of five of the threshold. \textbf{The negative
-result is therefore a property of the arithmetic, not of our sample.}
+It is tempting to compare these thresholds against zone \emph{mean} prices
+--- the dearest zone in our sample averages \SI{0.129}{\usd\per\kWh},
+roughly a fifth of the lowest threshold --- and conclude that the mechanism
+can never activate anywhere. An earlier draft of this paper did exactly
+that, and it was wrong.
 
-The honest converse is that this cuts against our own framing too: a
-mechanism that requires a five-fold error in the dearest electricity on
-earth before it activates is not a mechanism that a wider dataset will
-rescue. Collecting the remaining hubs will improve the descriptive cost
-surface, but it cannot revive the merit-order claim.
+Hourly prices breach these thresholds. Belgium's dearest hour reaches
+\SI{1.086}{\usd\per\kWh}, \SI{47}{\percent} above the
+\SI{0.740}{\usd\per\kWh} threshold; the Netherlands and Germany/Luxembourg
+also breach it. What the break-even calculation correctly establishes is
+therefore narrower than we first claimed: the mechanism cannot activate on
+\emph{typical} prices in any zone we can foresee, so it will always be a
+tail phenomenon rather than a persistent cost ranking. How much that tail
+is worth is an empirical question, answered in
+Section~\ref{sec:merit-order} at roughly one dollar per GPU-year.
+
+The general lesson is that a threshold test evaluated against a mean tells
+you nothing about a mechanism that operates in the tail. We record this
+because it is the error we made.
 
 \subsection{Why this cannot be rescued by better power data}
 
@@ -429,8 +483,8 @@ it is driven by commercial policy rather than by electricity.
 
 Capital cost sharpens the same point. An 8-accelerator H100 node at
 \SIrange{300}{400}{\kilo\usd} over four to five years is on the order of
-\SIrange{1}{1.7}{\usd} per GPU-hour of depreciation before any cost of
-capital --- roughly \numrange{10}{50}x the power cost. We do not publish
+\SIrange{0.86}{1.43}{\usd} per GPU-hour of depreciation before any cost of
+capital --- roughly \numrange{6}{15}x the power cost. We do not publish
 these figures in our dataset because we have no free, citable source for
 node prices, and they are stated here only to size the comparison. But the
 ordering is unambiguous: for any question other than short-run curtailment,
@@ -463,7 +517,7 @@ Parameter & Range tested & Effect on headroom & Changes conclusion? \\
 Non-power opex & \SIrange{0.00}{0.20}{\usd}/GPU-h & \SI{99.0}{\percent} $\to$ \SI{97.6}{\percent} & No \\
 Accelerator & A100 vs H100 & \SI{96.7}{\percent} $\to$ \SI{99.0}{\percent} & No \\
 Zone & 7 European zones & \SI{1.53}{x} cost spread & No \\
-delivered\_kW & \SIrange{0.9}{1.4}{\kilo\watt} & $\pm$\SI{27}{\percent} on a \SI{1}{\percent} item & No \\
+delivered\_kW & \SIrange{0.9}{1.4}{\kilo\watt} & $+55$/$-18$\si{\percent} on a small item & No \\
 \bottomrule
 \end{tabular}
 \caption{Sensitivity. To overturn the conclusion, compute prices would
@@ -493,7 +547,7 @@ We list every material weakness rather than the flattering subset.
   \item \textbf{No capacity weighting.} A merit-order curve should have
     installed capacity on its x-axis. We have no per-zone GPU capacity
     data, so Figure~\ref{fig:merit-order} shows the cost ladder without
-    capacity weights. The retirement \emph{sequence} is unaffected; the
+    capacity weights. The curtailment \emph{sequence} is unaffected; the
     quantity retiring at each step is unknown.
   \item \textbf{The compute-price leg is the weakest input.} No free
     redistributable index exists: Silicon Data's \texttt{SDH100RT} and
@@ -524,7 +578,7 @@ We list every material weakness rather than the flattering subset.
     \SI{0.180}{\kilo\watt} overhead is a reconciling residual.
   \item \textbf{Capital cost is excluded by construction.} This is correct
     for a curtailment question and wrong for every other question one might
-    ask. Our own rough sizing puts depreciation at \numrange{10}{50}x the
+    ask. Our own rough sizing puts depreciation at \numrange{6}{15}x the
     power cost.
   \item \textbf{All power cost is treated as avoidable.} That is wrong for
     any operator on an industrial tariff with a demand charge, or under a
@@ -565,7 +619,7 @@ The spark-spread analogy fails quantitatively. It works for gas generation
 because fuel is most of marginal cost, so fuel-price differences drive
 dispatch. It does not transfer to GPU compute, where power is a rounding
 error against rental revenue. Regional power-price differences of the
-magnitude observed cannot produce a retirement sequence; they can only
+magnitude observed cannot produce a curtailment sequence; they can only
 produce small margin differences.
 
 This does not make power irrelevant to AI infrastructure --- it relocates

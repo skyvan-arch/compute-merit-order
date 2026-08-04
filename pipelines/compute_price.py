@@ -243,20 +243,19 @@ def summarise_by_model(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame()
 
-    # De-duplicate pseudo-replicates before aggregating. Azure lists the same
-    # machine at 1/2/4-GPU sizes (NC24/NC48/NC96) which price identically per
-    # GPU-hour; counting all three would trumpet three "observations" where
-    # there is one independent price, and would understate any standard error
-    # a downstream user computes from this published dataset.
-    deduped = df.drop_duplicates(
-        subset=[
-            "provider",
-            "segment",
-            "accelerator_model",
-            "region",
-            "price_type",
-            "usd_per_gpu_hour",
-        ]
+    # Keep ONE observation per (provider, model, region, price_type). Azure
+    # lists the same machine at 1/2/4-GPU sizes (NC24/NC48/NC96); those are
+    # one independent price, not three.
+    #
+    # NEVER dedup on the float price: Azure's own rounding makes the sizes
+    # differ in the 4th decimal (northeurope A100 on-demand is 4.408000 /
+    # 4.407500 / 4.407500), so a price-keyed dedup silently lets near-
+    # duplicates through and skews the mean toward whichever region rounded
+    # inconsistently. Sorting by accelerator_count keeps the single-GPU SKU,
+    # which carries the least division rounding.
+    deduped = df.sort_values("accelerator_count").drop_duplicates(
+        subset=["provider", "segment", "accelerator_model", "region", "price_type"],
+        keep="first",
     )
 
     if deduped.empty:
