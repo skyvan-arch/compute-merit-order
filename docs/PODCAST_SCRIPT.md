@@ -1,5 +1,5 @@
 # Power Is a Permit, Not a Price
-### Podcast script — approx. 20 minutes, two hosts
+### Podcast script — approx. 15 minutes, two hosts
 
 **Format note.** ALEX narrates the research. SAM is the sceptic and asks the
 questions a listener would. Numbers are written the way they should be
@@ -46,18 +46,16 @@ something like a merit order for compute.
 
 **SAM:** Merit order meaning —
 
-**ALEX:** It's borrowed from electricity markets. Power plants get dispatched
-cheapest first. When demand falls, the expensive ones switch off in a
-predictable sequence. The claim is that AI compute works the same way: as the
-price of compute falls, the expensive regions go dark first, in order, and you
-can predict which ones.
+**ALEX:** Borrowed from electricity markets. Plants get dispatched cheapest
+first, and when demand falls the expensive ones switch off in a predictable
+sequence. The claim is compute works the same way: as prices fall, expensive
+regions go dark first, in order.
 
 **SAM:** That's a clean story.
 
-**ALEX:** It's a very clean story. It's also borrowed from an industry where
-fuel is sixty to ninety per cent of what it costs to run the plant. So the
-first thing worth checking is whether electricity is anything like that share
-of what it costs to run a GPU.
+**ALEX:** Very clean. It's also borrowed from an industry where fuel is sixty
+to ninety per cent of the cost of running the plant. So the first thing to
+check is whether electricity is anything like that share for a GPU.
 
 **SAM:** And it isn't.
 
@@ -75,14 +73,12 @@ decides whether it means anything.
 
 **ALEX:** European electricity prices — every settlement period, four years,
 seven regions I'm legally allowed to republish. Two hundred and fifteen
-thousand hourly observations. Against nine different published GPU rental
-prices. Everything free, everything auditable, the whole thing rebuilt by a
-test suite.
+thousand hourly observations, against nine published GPU rental prices.
+All free, all auditable, the whole thing rebuilt by a test suite.
 
 **SAM:** And the first answer?
 
-**ALEX:** The first answer was that nothing ever goes uneconomic. Anywhere.
-Ever. Enormous margins everywhere, no region ever switches off.
+**ALEX:** That nothing ever goes uneconomic. Anywhere. Ever.
 
 **SAM:** But that's wrong.
 
@@ -110,11 +106,11 @@ lives in the tail.** I'd made that mistake twice before anyone caught it.
 
 **SAM:** Fine. Hour by hour. What's the real number?
 
-**ALEX:** The right to switch off is an option. It's worth something in the
-handful of hours when running would lose you money. So price it like an
-option, hour by hour, over four years.
+**ALEX:** The right to switch off is an option — worth something only in the
+handful of hours when running would lose money. So price it like one, hour by
+hour, over four years.
 
-Austria, the worst region: about a dollar ten per GPU per year. Germany, about
+Austria, the worst region: about a dollar ten per GPU per year. Germany,
 thirty-six cents. France —
 
 **SAM:** France?
@@ -143,18 +139,17 @@ hard over power?
 
 **SAM:** And they clearly are.
 
-**ALEX:** Every serious AI plan opens with electricity. Stranded gas, Gulf
-contracts, nuclear restarts. That behaviour is real. So either they're all
-irrational, or they're chasing something that isn't price.
+**ALEX:** Every serious AI plan opens with electricity. That behaviour is
+real. So either everyone is irrational, or they're chasing something that
+isn't price.
 
-So I went and got the something else. Generation mix for fifteen countries.
-Installed capacity. Import and export positions. And national electricity
-consumption and GDP for thirty countries — including the US, China, India, the
-Gulf, Singapore.
+So I went and got the something else. Generation mix and trade positions for
+fifteen countries. National electricity consumption and GDP for thirty —
+including the US, China, India, the Gulf, Singapore.
 
 **SAM:** And?
 
-**ALEX:** And I asked a stupid-simple question. Take one gigawatt of compute
+**ALEX:** And I asked a stupid-simple question. One gigawatt of compute
 running flat out. What fraction of a country's entire annual electricity is
 that?
 
@@ -282,15 +277,14 @@ collectively at the ceiling.
 
 **SAM:** And the other two claims?
 
-**ALEX:** Can't adjudicate, and I want to be blunt about that. Trillion-dollar
-clusters — I have no capital cost data. None. GDP is a crude financing proxy
-and nothing more.
+**ALEX:** Can't adjudicate, and I'll be blunt. Trillion-dollar clusters — I
+have no capital cost data. None.
 
 And the big one: is grid *interconnection* the binding constraint? I have zero
-rows of queue data. Zero. That's the fashionable answer and I cannot support
-it. What I can say is that absorption is a *harder* constraint than
-interconnection — you can reform a queue in one legislative session, but you
-cannot legislate twenty-five per cent of Ireland's electricity into existence.
+rows of queue data. That's the fashionable answer and I can't support it. What
+I can say is absorption is the *harder* constraint — you can reform a queue in
+one legislative session, but you cannot legislate twenty-five per cent of
+Ireland's electricity into existence.
 
 **SAM:** And the scramble for power contracts?
 
@@ -307,22 +301,21 @@ anywhere to put the thing at all.*
 **SAM:** You've mentioned a couple of your own errors. Why keep bringing them
 up?
 
-**ALEX:** Because the entire value of this project is that you can check it,
-and that only means something if I'm honest about the failure rate.
+**ALEX:** Because the whole value of this project is that you can check it —
+and that means nothing unless I'm honest about the failure rate.
 
-So: I averaged away my own finding, twice. I published a claim that a number
-was "confidential and unobtainable" while my own code was deliberately
-throwing that exact number away — Microsoft publishes multi-year committed
-rates, sixty per cent below list, and I was filtering them out.
+I averaged away my own finding, twice. I wrote that committed contract rates
+were "confidential and unobtainable" while my own code was deliberately
+deleting them — Microsoft publishes them, sixty per cent below list, and I was
+filtering them out.
 
-I labelled France — the largest electricity exporter in Europe — as a net
+I labelled France, the largest electricity exporter in Europe, as a net
 importer, because I trusted a sign convention instead of checking it.
 
 And I told people Germany had the largest capacity headroom in Europe. That
-number came from a row in the data that was a *2030 policy target*, mixed in
-with present-day capacity, alongside double-counted solar and battery
-gigawatt-*hours* sitting in a gigawatt column. The real base is about a third
-of what I reported.
+came from a row that was a *2030 policy target* sitting alongside present-day
+capacity, with double-counted solar and battery gigawatt-*hours* in a gigawatt
+column. The real base is about a third of what I said.
 
 **SAM:** So you pulled the number.
 
