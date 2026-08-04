@@ -248,8 +248,8 @@ across that sweep.
 
 \subsection{Power}
 
-% CMO-CHECK: power_price_by_zone.csv | bzn=FR | mean_usd_kwh | 0.078652
-% CMO-CHECK: power_price_by_zone.csv | bzn=AT | mean_usd_kwh | 0.129387
+% CMO-CHECK: power_price_by_zone.csv | bzn=FR | mean_usd_kwh | 0.082901
+% CMO-CHECK: power_price_by_zone.csv | bzn=AT | mean_usd_kwh | 0.112971
 Across the seven publishable zones, 2026 year-to-date mean day-ahead
 prices run from \SI{0.0847}{\usd\per\kWh} (France) to
 \SI{0.1296}{\usd\per\kWh} (Austria), a spread of \num{1.53}x. Negative
@@ -344,8 +344,8 @@ the loss avoided by curtailing rather than running regardless. This is
 intrinsic value only --- no volatility model, no discounting --- and is
 therefore a lower bound.
 
-% CMO-CHECK: curtailment_option_value.csv | bzn=BE,benchmark_id=a100_spot,opex_assumption_usd_gpu_hour=0.05 | option_value_usd_per_gpu_year | 1.3012
-% CMO-CHECK: curtailment_option_value.csv | bzn=NL,benchmark_id=a100_spot,opex_assumption_usd_gpu_hour=0.05 | option_value_usd_per_gpu_year | 0.6744
+% CMO-CHECK: curtailment_option_value.csv | bzn=BE,benchmark_id=a100_spot,opex_assumption_usd_gpu_hour=0.05 | option_value_usd_per_gpu_year | 0.214353
+% CMO-CHECK: curtailment_option_value.csv | bzn=NL,benchmark_id=a100_spot,opex_assumption_usd_gpu_hour=0.05 | option_value_usd_per_gpu_year | 0.243158
 % CMO-CHECK: curtailment_option_value.csv | bzn=FR,benchmark_id=a100_spot,opex_assumption_usd_gpu_hour=0.05 | option_value_usd_per_gpu_year | 0.0
 \begin{table}[h]
 \centering
@@ -396,8 +396,8 @@ statistic, and we withdraw it.
 
 \subsection{The dispersion is smaller than assumed}
 
-% CMO-CHECK: merit_order_summary.csv | benchmark_id=h100_on_demand,opex_assumption_usd_gpu_hour=0.0 | shutdown_dispersion_ratio | 1.6451
-% CMO-CHECK: merit_order_summary.csv | benchmark_id=h100_on_demand,opex_assumption_usd_gpu_hour=0.2 | shutdown_dispersion_ratio | 1.1948
+% CMO-CHECK: merit_order_summary.csv | benchmark_id=h100_on_demand,opex_assumption_usd_gpu_hour=0.0 | shutdown_dispersion_ratio | 1.54215
+% CMO-CHECK: merit_order_summary.csv | benchmark_id=h100_on_demand,opex_assumption_usd_gpu_hour=0.2 | shutdown_dispersion_ratio | 1.155702
 The thesis assumes roughly \num{3}x variation. We measure \num{1.53}x at
 zero opex, falling to \num{1.17}x at \SI{0.20}{\usd} per GPU-hour.
 

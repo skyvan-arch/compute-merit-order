@@ -116,7 +116,7 @@ def _fetch_chunk(
     else:
         payload = None
         last_error = ""
-        for attempt in range(MAX_RETRIES):
+        for _attempt in range(MAX_RETRIES):
             try:
                 response = requests.get(url, params=params, timeout=90)
                 response.raise_for_status()
