@@ -183,9 +183,13 @@ def summarise_generation(payload: dict[str, Any], hub: Hub, source_url: str) -> 
 
     mean_load = mean_of("Load")
     peak_load = peak_of("Load")
-    # Positive cross-border trading = net export in the Energy-Charts sign
-    # convention; negative = net import.
-    net_trade = mean_of("Cross border electricity trading")
+    # Sign convention, verified against the data rather than assumed: for
+    # France, generation exceeds load by 12,917 MW while this series reads
+    # -11,782; for Italy and Belgium, generation falls short of load and the
+    # series is positive. So POSITIVE = NET IMPORT. An earlier version of this
+    # module had the sign inverted and labelled France, Europe's largest
+    # electricity exporter, as a net importer.
+    net_import = mean_of("Cross border electricity trading")
 
     return {
         "hub_code": hub.code,
@@ -201,8 +205,9 @@ def summarise_generation(payload: dict[str, Any], hub: Hub, source_url: str) -> 
         "nuclear_share_of_load": mean_of("Nuclear") / mean_load if mean_load else float("nan"),
         "hydro_reservoir_mw": mean_of("Hydro water reservoir"),
         "wind_solar_mw": mean_of("Wind onshore") + mean_of("Wind offshore") + mean_of("Solar"),
-        "net_cross_border_mw": net_trade,
-        "net_export_share_of_load": net_trade / mean_load if mean_load else float("nan"),
+        "net_import_mw": net_import,
+        "net_import_share_of_load": net_import / mean_load if mean_load else float("nan"),
+        "is_net_exporter": bool(net_import < 0),
         "generation_source_url": source_url,
     }
 
@@ -250,9 +255,7 @@ def build(start: str, end: str, *, use_cache: bool = True) -> tuple[pd.DataFrame
                 fetch_generation(hub, start, end, use_cache=use_cache), hub, gen_url
             )
             inst_url = f"{INSTALLED_POWER_URL}?country={hub.code}&time_step=yearly"
-            inst = summarise_installed(
-                fetch_installed(hub, use_cache=use_cache), hub, inst_url
-            )
+            inst = summarise_installed(fetch_installed(hub, use_cache=use_cache), hub, inst_url)
             row = {**gen, **{k: v for k, v in inst.items() if k != "hub_code"}}
             row["capacity_headroom_gw"] = row["installed_total_gw"] - row["peak_load_mw"] / 1000.0
             row["firm_headroom_gw"] = row["installed_firm_gw"] - row["peak_load_mw"] / 1000.0

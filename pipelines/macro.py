@@ -58,9 +58,36 @@ INDICATORS: dict[str, str] = {
 #: ISO2 codes matching pipelines/grid_structure.HUBS, plus the non-European
 #: comparators the paper needs in order to say anything global.
 COUNTRIES: tuple[str, ...] = (
-    "FR", "DE", "NL", "BE", "AT", "NO", "SE", "ES", "PT", "FI", "IT", "PL",
-    "CH", "IE", "DK", "US", "GB", "SG", "AE", "SA", "CN", "IN", "JP", "KR",
-    "CA", "AU", "BR", "ZA", "MY", "QA",
+    "FR",
+    "DE",
+    "NL",
+    "BE",
+    "AT",
+    "NO",
+    "SE",
+    "ES",
+    "PT",
+    "FI",
+    "IT",
+    "PL",
+    "CH",
+    "IE",
+    "DK",
+    "US",
+    "GB",
+    "SG",
+    "AE",
+    "SA",
+    "CN",
+    "IN",
+    "JP",
+    "KR",
+    "CA",
+    "AU",
+    "BR",
+    "ZA",
+    "MY",
+    "QA",
 )
 
 
@@ -132,8 +159,12 @@ def _fetch_chunk(
 
 
 def fetch_indicator(
-    indicator: str, countries: tuple[str, ...], start_year: int, end_year: int,
-    *, use_cache: bool = True,
+    indicator: str,
+    countries: tuple[str, ...],
+    start_year: int,
+    end_year: int,
+    *,
+    use_cache: bool = True,
 ) -> list[dict[str, Any]]:
     """Fetch one indicator for all countries, chunked to avoid API timeouts."""
     rows: list[dict[str, Any]] = []
