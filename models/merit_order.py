@@ -122,6 +122,51 @@ def dispersion_ratio(ladder: pd.DataFrame, column: str) -> float:
     return float(values.max()) / minimum
 
 
+def break_even_power_price_usd_kwh(
+    compute_price_usd_gpu_hour: float,
+    marginal_opex_usd_per_gpu_hour: float,
+    delivered_kw: float = DELIVERED_KW,
+) -> float:
+    """Electricity price at which a fleet is exactly at its shutdown price.
+
+    Inverts shutdown_price(): the price per kWh that would make avoidable cost
+    equal the given compute price.
+
+    This is what makes the paper's negative result robust to its own narrow
+    sample. Rather than arguing about whether a wider set of zones would
+    change the answer, it states the power price a zone would need in order
+    to be curtailed at all, which any reader can compare against the dearest
+    electricity they know of. Returns a negative number when opex alone
+    already exceeds the compute price, meaning no electricity price can save
+    the fleet.
+    """
+    return (compute_price_usd_gpu_hour - marginal_opex_usd_per_gpu_hour) / delivered_kw
+
+
+def break_even_table(
+    benchmarks: list[ComputeBenchmark],
+    opex_values: list[float],
+    delivered_kw: float = DELIVERED_KW,
+) -> pd.DataFrame:
+    """Break-even power price for every benchmark x opex combination."""
+    rows: list[dict[str, object]] = []
+    for benchmark in benchmarks:
+        for opex in opex_values:
+            rows.append(
+                {
+                    "benchmark_id": benchmark.benchmark_id,
+                    "compute_price_label": benchmark.label,
+                    "compute_price_usd_gpu_hour": benchmark.usd_per_gpu_hour,
+                    "opex_assumption_usd_gpu_hour": opex,
+                    "delivered_kw": delivered_kw,
+                    "break_even_power_usd_kwh": break_even_power_price_usd_kwh(
+                        benchmark.usd_per_gpu_hour, opex, delivered_kw
+                    ),
+                }
+            )
+    return pd.DataFrame(rows)
+
+
 def curtailment_sequence(ladder: pd.DataFrame) -> list[str]:
     """Zone names in the order they go uneconomic as compute prices fall.
 
@@ -196,20 +241,25 @@ def build_all(
     return detail, pd.DataFrame(summary_rows)
 
 
-def write_outputs(detail: pd.DataFrame, summary: pd.DataFrame) -> list[Path]:
+def write_outputs(
+    detail: pd.DataFrame, summary: pd.DataFrame, break_even: pd.DataFrame
+) -> list[Path]:
     FINAL_DIR.mkdir(parents=True, exist_ok=True)
     detail_path = FINAL_DIR / "merit_order.csv"
     summary_path = FINAL_DIR / "merit_order_summary.csv"
+    break_even_path = FINAL_DIR / "break_even_power_price.csv"
     detail.to_csv(detail_path, index=False)
     summary.to_csv(summary_path, index=False)
-    return [detail_path, summary_path]
+    break_even.to_csv(break_even_path, index=False)
+    return [detail_path, summary_path, break_even_path]
 
 
 def main() -> None:
     # Opex sweep bounds, not estimates — no public source exists (issue #14).
     opex_values = [0.00, 0.05, 0.20]
     detail, summary = build_all(opex_values)
-    for path in write_outputs(detail, summary):
+    break_even = break_even_table(load_compute_benchmarks(), opex_values)
+    for path in write_outputs(detail, summary, break_even):
         print(f"Wrote {path}")
 
 

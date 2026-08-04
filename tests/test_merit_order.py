@@ -122,3 +122,33 @@ def test_dispersion_ratio_rejects_non_positive_minimum() -> None:
     ladder = pd.DataFrame({"shutdown_price_usd_gpu_hour": [0.0, 0.05]})
     with pytest.raises(ValueError, match="Cannot form a dispersion ratio"):
         merit_order.dispersion_ratio(ladder, "shutdown_price_usd_gpu_hour")
+
+
+def test_break_even_power_price_inverts_shutdown_price() -> None:
+    """The break-even price must reproduce the compute price when fed back in."""
+    from models.spark_spread import shutdown_price
+
+    compute_price = 0.8168
+    opex = 0.05
+    kwh = merit_order.break_even_power_price_usd_kwh(compute_price, opex, 1.10)
+    assert kwh == pytest.approx((0.8168 - 0.05) / 1.10)
+    # Round-trip: at that power price, avoidable cost equals the compute price.
+    assert shutdown_price(kwh, opex, 1.10) == pytest.approx(compute_price)
+
+
+def test_break_even_is_far_above_any_real_tariff() -> None:
+    """Pins the paper's sample-independence argument.
+
+    Even at the cheapest compute price observed, the electricity price needed
+    to force curtailment is multiples of the dearest zone in the sample
+    (Austria, ~0.13 USD/kWh) and above any industrial tariff worldwide.
+    """
+    cheapest_observed_compute_price = 0.8168  # A100 spot
+    kwh = merit_order.break_even_power_price_usd_kwh(cheapest_observed_compute_price, 0.05, 1.10)
+    assert kwh > 0.60
+    assert kwh > 4 * 0.129565  # more than 4x the dearest zone measured
+
+
+def test_break_even_negative_when_opex_alone_exceeds_price() -> None:
+    """No electricity price can rescue a fleet whose opex already exceeds revenue."""
+    assert merit_order.break_even_power_price_usd_kwh(0.10, 0.50, 1.10) < 0

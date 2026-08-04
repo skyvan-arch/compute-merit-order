@@ -38,7 +38,12 @@ obscures and which moves the result by more than any parameter in the cost
 model. Headroom over avoidable cost is at least \SI{76}{\percent} on every
 basis and in every zone we test, no zone is uneconomic anywhere in the grid
 of assumptions, and compute prices would have to fall a further
-\SIrange{76}{99}{\percent} before the first zone curtails. The dispersion in
+\SIrange{76}{99}{\percent} before the first zone curtails. Inverting the
+cost identity shows the result does not depend on our sample: even at the
+cheapest compute price we observe, a zone would need electricity at
+\SI{0.70}{\usd\per\kWh} --- five times the dearest zone we measure, and far
+above any industrial tariff worldwide --- before curtailment became
+rational. The dispersion in
 shutdown prices across our sample is \num{1.53}x, not the \num{3}x the
 thesis assumes, and adding non-power operating cost compresses it further
 toward \num{1.17}x. We also find the supply-rich/constrained hub taxonomy
@@ -355,6 +360,62 @@ independently of data. Since plausible non-power opex is of the same order
 as --- or larger than --- the entire power cost, the dispersion that
 actually drives a merit order is materially below the dispersion in
 electricity prices that motivates it.
+
+\subsection{The result does not depend on our sample}
+
+The obvious objection to a negative result drawn from seven European zones
+is that a wider sample would change it. It would not, and this can be
+settled without collecting a single additional price. Inverting
+Equation~\eqref{eq:shutdown-price} gives the electricity price at which a
+fleet would sit exactly at its shutdown price:
+\begin{equation}
+  \label{eq:break-even}
+  p^{*}_{\text{kWh}} =
+  \frac{\text{compute\_price} - \text{opex}_{\text{marginal}}}
+       {\text{delivered\_kW}}.
+\end{equation}
+
+% CMO-CHECK: break_even_power_price.csv | benchmark_id=a100_spot,opex_assumption_usd_gpu_hour=0.05 | break_even_power_usd_kwh | 0.6971
+% CMO-CHECK: break_even_power_price.csv | benchmark_id=h100_on_demand,opex_assumption_usd_gpu_hour=0.05 | break_even_power_usd_kwh | 12.8032
+Evaluated at the cheapest compute price we observe --- A100 spot, at
+\SI{0.82}{\usd} per GPU-hour --- a zone would need electricity at
+\SI{0.697}{\usd\per\kWh} before curtailment became rational. At H100
+on-demand list prices it would need \SI{12.80}{\usd\per\kWh}.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}lrr@{}}
+\toprule
+Compute price basis & \si{\usd}/GPU-h & Break-even power (\si{\usd\per\kWh}) \\
+\midrule
+A100 spot            &  0.82 &  0.70 \\
+A100 reserved 3-year &  1.66 &  1.46 \\
+H100 spot            &  2.61 &  2.33 \\
+H100 reserved 5-year &  5.65 &  5.09 \\
+H100 on-demand list  & 14.13 & 12.80 \\
+\bottomrule
+\end{tabular}
+\caption{Electricity price required to force curtailment, at
+\SI{0.05}{\usd}/GPU-h non-power opex. For comparison, the dearest zone in
+our sample is Austria at \SI{0.130}{\usd\per\kWh} and the cheapest is
+France at \SI{0.085}{\usd\per\kWh}.}
+\label{tab:break-even}
+\end{table}
+
+The dearest zone we measure is Austria at \SI{0.130}{\usd\per\kWh}. The
+break-even price at the \emph{cheapest} observed compute price is more than
+five times that, and roughly an order of magnitude above the industrial
+tariffs prevailing in the hubs this project set out to compare, including
+the expensive ones. Adding ERCOT West at the cheap end or Ireland and
+Singapore at the dear end moves zones within the ladder; it does not bring
+any of them within a factor of five of the threshold. \textbf{The negative
+result is therefore a property of the arithmetic, not of our sample.}
+
+The honest converse is that this cuts against our own framing too: a
+mechanism that requires a five-fold error in the dearest electricity on
+earth before it activates is not a mechanism that a wider dataset will
+rescue. Collecting the remaining hubs will improve the descriptive cost
+surface, but it cannot revive the merit-order claim.
 
 \subsection{Why this cannot be rescued by better power data}
 
