@@ -10,6 +10,7 @@ row out of the twelve Azure returns for a single SKU.
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -35,7 +36,9 @@ def test_basket_entries_all_carry_a_source() -> None:
         assert sku.accelerator_count > 0, sku.arm_sku_name
 
 
-def test_parse_selects_only_on_demand_and_spot_linux(payload: dict[str, object]) -> None:
+def test_parse_selects_linux_on_demand_spot_and_reserved(
+    payload: dict[str, object],
+) -> None:
     sku = sku_by_arm_name(H100_SKU_NAME)
     assert sku is not None
 
@@ -43,10 +46,14 @@ def test_parse_selects_only_on_demand_and_spot_linux(payload: dict[str, object])
         payload, sku, region="eastus", price_source_url="https://example.test/prices"
     )
 
-    # From ten fixture rows, exactly two survive: Linux on-demand and Linux spot.
-    assert len(observations) == 2
     by_type = {o.price_type: o for o in observations}
-    assert set(by_type) == {"on_demand", "spot"}
+    assert set(by_type) == {"on_demand", "spot", "reserved_1yr"}
+
+    # Reservation rows quote the term TOTAL; 551221 over 1 year of 8760 h on
+    # 8 accelerators = 7.8656 USD per GPU-hour.
+    reserved = by_type["reserved_1yr"]
+    assert reserved.usd_per_instance_hour == pytest.approx(551221.0 / 8760)
+    assert reserved.usd_per_gpu_hour == pytest.approx(7.8656, abs=1e-3)
 
     on_demand = by_type["on_demand"]
     assert on_demand.usd_per_instance_hour == pytest.approx(98.32)
@@ -67,14 +74,37 @@ def test_windows_rows_are_excluded(payload: dict[str, object]) -> None:
     assert all(o.usd_per_instance_hour != pytest.approx(102.736) for o in observations)
 
 
-def test_reservation_rows_are_excluded(payload: dict[str, object]) -> None:
-    """Reservation rows quote a total, not an hourly rate — 551221.0 here."""
+def test_reservation_totals_are_never_published_raw(
+    payload: dict[str, object],
+) -> None:
+    """The term total (551221.0) must be divided down, never emitted as-is."""
     sku = sku_by_arm_name(H100_SKU_NAME)
     assert sku is not None
     observations = compute_price.parse_price_rows(
         payload, sku, region="eastus", price_source_url="https://example.test/prices"
     )
     assert all(o.usd_per_instance_hour < 1000 for o in observations)
+
+
+def test_parsing_is_deterministic_for_a_fixed_as_of(
+    payload: dict[str, object],
+) -> None:
+    """Same cache + same as_of must give the same answer on any day.
+
+    Previously as_of_date and the expiry cutoff were read from the wall
+    clock at parse time, so re-parsing an unchanged cache drifted.
+    """
+    sku = sku_by_arm_name(H100_SKU_NAME)
+    assert sku is not None
+    moment = datetime(2026, 8, 3, tzinfo=UTC)
+    first = compute_price.parse_price_rows(
+        payload, sku, region="eastus", price_source_url="https://x", as_of=moment
+    )
+    second = compute_price.parse_price_rows(
+        payload, sku, region="eastus", price_source_url="https://x", as_of=moment
+    )
+    assert first == second
+    assert all(o.as_of_date == "2026-08-03" for o in first)
 
 
 def test_low_priority_rows_are_excluded(payload: dict[str, object]) -> None:
@@ -162,8 +192,9 @@ def test_summarise_reports_per_segment_never_blended() -> None:
     summary = compute_price.summarise_by_model(df)
 
     # Two segments stay separate rather than averaging to a meaningless ~7.
-    assert len(summary) == 2
-    assert set(summary["segment"]) == {"hyperscaler", "neocloud"}
-    hyperscaler = summary[summary["segment"] == "hyperscaler"].iloc[0]
+    on_demand_rows = summary[summary["price_type"] == "on_demand"]
+    assert len(on_demand_rows) == 2
+    assert set(on_demand_rows["segment"]) == {"hyperscaler", "neocloud"}
+    hyperscaler = on_demand_rows[on_demand_rows["segment"] == "hyperscaler"].iloc[0]
     # Spot must not contaminate the on-demand aggregate.
     assert hyperscaler["mean_usd_per_gpu_hour"] == pytest.approx(12.29)

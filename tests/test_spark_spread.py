@@ -12,11 +12,11 @@ from models import spark_spread
 
 
 def test_delivered_kw_default_matches_documented_derivation() -> None:
-    # (0.700 TDP + 0.180 overhead) * 1.25 PUE = 1.100 kW
+    # (0.700 TDP + 0.180 overhead) * 1.25 PUE = 1.100 kW.
+    # Only the literal is asserted. Re-asserting the defining expression
+    # would be a tautology -- DELIVERED_KW *is* that expression -- and would
+    # silently "pass" if every input changed together.
     assert constants.DELIVERED_KW == pytest.approx(1.10)
-    assert constants.DELIVERED_KW == pytest.approx(
-        (constants.ACCELERATOR_TDP_KW + constants.IT_OVERHEAD_KW) * constants.PUE
-    )
 
 
 def test_delivered_kw_default_sits_inside_its_sensitivity_range() -> None:
@@ -98,6 +98,25 @@ def test_sweep_covers_the_full_grid() -> None:
     assert cheapest.delivered_kw == 0.9
     assert cheapest.marginal_opex_usd_per_gpu_hour == 0.01
     assert cheapest.shutdown_price_usd_gpu_hour == pytest.approx(0.05 * 0.9 + 0.01)
+
+
+def test_headroom_at_realistic_market_prices_is_extreme() -> None:
+    """Pin the paper's central finding at real observed magnitudes.
+
+    Every other example here uses toy values of the same order as the power
+    cost, which is exactly the implicit assumption the data falsifies. This
+    test uses measured figures: DE-LU at ~0.1138 USD/kWh against H100
+    on-demand list (~14.13) and 5-year reserved (~5.65) USD/GPU-hour.
+    """
+    power_usd_kwh = 0.1138
+    cost = spark_spread.shutdown_price(power_usd_kwh, 0.0, constants.DELIVERED_KW)
+    assert cost == pytest.approx(0.1252, abs=1e-3)
+
+    # Power is ~0.9% of on-demand revenue, ~2.2% of 5-year reserved revenue.
+    assert spark_spread.headroom(14.1335, cost) > 0.99
+    assert spark_spread.headroom(5.6534, cost) > 0.97
+    # Even the cheapest observed compute price leaves the fleet far above cost.
+    assert spark_spread.is_economic(0.8168, cost)
 
 
 def test_sweep_without_compute_price_leaves_headroom_undefined() -> None:

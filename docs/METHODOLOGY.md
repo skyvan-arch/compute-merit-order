@@ -9,10 +9,11 @@ along the way, and `docs/SOURCES.md` for where every input comes from.
 
 ## Core quantities
 
-- **Delivered power per GPU-hour** (`delivered_kW`): accelerator TDP,
-  scaled by PUE, plus a CPU/NIC/storage overhead share. Not yet
-  implemented (Phase 3); will be a single named constant with a
-  documented sensitivity range, per `docs/ASSUMPTIONS.md`.
+- **Delivered power per accelerator** (`delivered_kW`, units kW; energy per
+  GPU-hour is `delivered_kW x 1 h` in kWh): accelerator TDP,
+  scaled by PUE, plus a CPU/NIC/storage overhead share. Implemented in
+  `config/constants.py` as a single named constant with a documented
+  sensitivity range, per `docs/ASSUMPTIONS.md`.
 - **Power cost per GPU-hour**: `delivered_kW × price_usd_per_kwh`.
 - **Shutdown price**: power cost plus non-power marginal opex
   (staffing, bandwidth, maintenance), expressed as a range, not a point
@@ -42,9 +43,10 @@ behind an abstraction:
    published, cross-source, tidy outputs — CC-BY-4.0 licensed, and the
    only directory a downstream user should need.
 
-This is implemented end-to-end once, for ENTSO-E DE-LU
-(`pipelines/entsoe.py`), before being repeated for other sources — see
-`README.md` Status and the GitHub issue tracker for what's next.
+Implemented for `pipelines/power_price.py` (Energy-Charts, 12 EU zones) and
+`pipelines/compute_price.py` (Azure Retail Prices). `pipelines/entsoe.py`
+remains as the authoritative primary power source but is token-gated and no
+longer the critical path.
 
 ## Source eligibility: free data only (project constraint, set 2026-08-03)
 
@@ -124,9 +126,11 @@ built):
 
 ## Current implementation status
 
-As of this draft, only the ENTSO-E DE-LU pipeline exists, and it has not
-been run against live data (see `docs/SOURCES.md`). Everything above
-Section "Pipeline architecture" describes the intended methodology for
-the full project; treat any section referencing hub classification,
-compute price, or the merit-order figure as forward-looking until the
-corresponding GitHub milestone closes.
+Populated with real data: the power leg (7 publishable EU zones of 12
+collected — see `docs/WITHHELD_ZONES.md` for the licence-withheld five),
+the compute leg (Azure on-demand, spot and 1/3/5-year reserved), and the
+merit order joining them. The hub taxonomy above is **not** yet backed by
+data and, on the evidence in the paper, does not predict cost: France
+(classified constrained) is the cheapest zone in the sample and Norway NO2
+(classified supply-rich) is among the dearest. Treat the taxonomy as a
+hypothesis to be tested, not an input.

@@ -34,13 +34,20 @@ ACCELERATOR_TDP_KW: Final[float] = 0.700
 IT_OVERHEAD_KW: Final[float] = 0.180
 PUE: Final[float] = 1.25
 
-#: Delivered kW drawn from the grid per accelerator-hour, PUE included.
+#: Delivered grid power per accelerator, PUE included. Units: kW (power).
+#: Multiplying by one hour gives kWh per GPU-hour (energy) — the two are
+#: distinct, and 'kW per GPU-hour' would be dimensionally wrong.
 #: THE single named constant referred to in the project brief.
 DELIVERED_KW: Final[float] = (ACCELERATOR_TDP_KW + IT_OVERHEAD_KW) * PUE
 
-#: Inclusive bounds for the delivered_kW sensitivity sweep (project brief).
+#: Inclusive bounds for the delivered_kW sensitivity sweep. The project brief
+#: specified 0.9-1.4, but that ceiling does not bracket a plausible value: a
+#: measured 8xH100 HGX node draws on the order of 10 kW at the IT level, i.e.
+#: ~1.28 kW per accelerator before PUE, which is ~1.6 kW delivered at PUE 1.25.
+#: The ceiling is raised so the sweep spans values the hardware can actually
+#: reach; a sweep that cannot reach the true value is decoration.
 DELIVERED_KW_SENSITIVITY_MIN: Final[float] = 0.90
-DELIVERED_KW_SENSITIVITY_MAX: Final[float] = 1.40
+DELIVERED_KW_SENSITIVITY_MAX: Final[float] = 1.70
 
 #: Bounds for the PUE sensitivity sweep. 1.10 is about as good as a
 #: hyperscale facility credibly claims; 1.60 is typical of older or

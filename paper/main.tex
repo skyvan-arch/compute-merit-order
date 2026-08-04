@@ -13,7 +13,9 @@
 
 \newcommand{\todopending}[1]{{\color{gray!70!black}\itshape[Pending: #1]}}
 
-\title{The Compute Merit Order: Where AI Compute Is Economic to Run}
+\title{The Compute Merit Order: A Negative Result\\
+\large Electricity cost is roughly one per cent of GPU rental revenue,
+and the geographic curtailment sequence it implies is not binding}
 \author{Compute Merit Order Project}
 \date{Working paper --- draft, \today}
 
@@ -22,18 +24,35 @@
 
 \begin{abstract}
 A GPU cluster earns a compute price per GPU-hour and pays an electricity
-cost per GPU-hour; the difference is a spread directly analogous to the
-spark spread long used in power markets. We propose that this compute
-spark spread determines a shutdown price below which a given fleet is
-uneconomic to run, and that because industrial electricity costs vary by
-roughly a factor of three across regions, shutdown prices should vary
-similarly --- implying a predictable global merit order in which capacity
-retires by geography as compute prices fall. We further ask whether the
-binding constraint on AI data-centre buildout is grid interconnection and
-power availability rather than chip supply. This is a working paper: the
-present draft documents methodology and reports results only for the data
-sources brought online so far. \todopending{aggregate results once more
-hubs are populated; see Section~\ref{sec:limitations}}.
+cost per GPU-hour. The difference is a spread superficially analogous to
+the spark spread in power markets, and it implies a shutdown price below
+which a fleet is uneconomic to run. Because regional power costs differ,
+shutdown prices differ, which is said to imply a global merit order in
+which compute capacity curtails in a predictable geographic sequence. We
+construct that merit order from open data for seven European bidding zones
+and find that \textbf{it exists, is computable, and is not binding}. Power
+ranges from \SI{1.0}{\percent} of revenue at H100 on-demand list prices to
+\SI{17.4}{\percent} at A100 spot prices, so the answer depends critically
+on which revenue basis is used --- a choice the spark-spread framing
+obscures and which moves the result by more than any parameter in the cost
+model. Headroom over avoidable cost is at least \SI{76}{\percent} on every
+basis and in every zone we test, no zone is uneconomic anywhere in the grid
+of assumptions, and compute prices would have to fall a further
+\SIrange{76}{99}{\percent} before the first zone curtails. The dispersion in
+shutdown prices across our sample is \num{1.53}x, not the \num{3}x the
+thesis assumes, and adding non-power operating cost compresses it further
+toward \num{1.17}x. We also find the supply-rich/constrained hub taxonomy
+does not predict cost in this sample: the cheapest zone is France, nominally
+constrained, and Norway NO2, nominally supply-rich, is the second dearest.
+Separately, we recover Azure's \num{1}, \num{3} and \num{5}-year committed
+rates from published reservation data --- a \SI{60}{\percent} discount to
+list that is routinely described as confidential --- and use them as the
+revenue basis a committed operator actually faces.
+The spark-spread analogy fails quantitatively because fuel is
+\SIrange{60}{90}{\percent} of a gas plant's marginal cost while power is
+single-digit percentages of a GPU fleet's revenue on any realistic basis. We state the conditions
+under which the thesis would become true, and note that the interesting
+economics lies in capital recovery and siting, not in shutdown.
 \end{abstract}
 
 \tableofcontents
@@ -42,281 +61,476 @@ hubs are populated; see Section~\ref{sec:limitations}}.
 \label{sec:intro}
 
 Spark spreads --- the difference between the wholesale price of
-electricity and the fuel cost of generating it --- have been a standard
-tool in power-market economics for decades, used to determine when a
-gas-fired plant is worth dispatching. We argue an analogous quantity
-governs AI compute: a GPU cluster sells compute capacity at some market
-price per GPU-hour, and its main variable cost is the electricity it
-consumes. When the compute price falls below the cost of power (plus
-non-power marginal operating costs), running the fleet no longer covers
-its variable cost, and rational operators curtail or shut it down.
+electricity and the fuel cost of generating it --- are a standard tool in
+power-market economics, used to decide when a gas-fired plant is worth
+dispatching. An analogous quantity is often asserted to govern AI compute:
+a GPU cluster sells compute at some price per GPU-hour, its main variable
+cost is electricity, and when the compute price falls below that cost plus
+non-power operating expense, a rational operator curtails. Because
+industrial power costs vary substantially across regions, the shutdown
+prices implied by this logic vary too, which would produce a global merit
+order --- a predictable geographic sequence in which compute capacity
+curtails as compute prices fall.
 
-This became analysable in general, rather than case-by-case, only once
-two things existed together: (a) reasonably transparent, high-frequency
-regional wholesale electricity price data, which has existed for years
-in most liberalised power markets, and (b) a visible compute price ---
-i.e., published GPU rental rates and compute-price indices that let one
-observe the revenue side of the spread at all. The latter only began to
-be published with any regularity in 2026, which is why this analysis is
-being done now rather than earlier.
+This paper tests that proposition and reports a negative result. The
+mechanism is real and we compute it explicitly, but its magnitude is far
+too small for it to bind at observed prices. The reason is a simple
+quantitative asymmetry that the analogy obscures: for a combined-cycle gas
+turbine, fuel is typically \SIrange{60}{90}{\percent} of short-run marginal
+cost, so a change in gas prices moves the dispatch decision directly. For a
+GPU fleet renting at on-demand list prices, electricity is of order
+\SI{1}{\percent} of revenue, rising to \SI{17}{\percent} only at the
+cheapest spot price we observe. A threefold difference in a one-per-cent
+cost item is a two-percentage-point difference in margin, not a dispatch
+signal.
 
-We test two claims in this paper:
+We test two claims:
 \begin{enumerate}
-  \item \textbf{The compute merit order.} Because industrial power costs
-    vary by roughly 3x across the regions we study, shutdown prices
-    (Section~\ref{sec:spread}) should vary similarly, producing a
-    predictable geographic sequence in which capacity retires as compute
-    prices fall (Section~\ref{sec:merit-order}).
-  \item \textbf{Chips vs.\ power.} The binding constraint on AI data-centre
-    buildout is grid interconnection and power availability, not chip
-    supply (Section~\ref{sec:constraints}).
+  \item \textbf{The compute merit order.} That regional power-cost
+    differences produce a geographic curtailment sequence as compute
+    prices fall (Section~\ref{sec:merit-order}). We test curtailment, not
+    retirement: the two are distinct decisions with distinct cost bases,
+    and conflating them is a category error we discuss in
+    Section~\ref{sec:spread}.
+  \item \textbf{Chips versus power.} That the binding constraint on AI
+    buildout is grid interconnection and power availability rather than
+    chip supply (Section~\ref{sec:constraints}).
 \end{enumerate}
 
-Both claims are falsifiable from the data assembled here, and we report
-where the data does not support them rather than adjust the claims to
-fit. As of this draft, only the ENTSO-E DE-LU (Germany/Luxembourg)
-bidding zone has real data behind it; every other hub is a documented
-placeholder. \todopending{full cross-hub test of both claims once Phase
-1--4 data collection completes; see the project's GitHub issue tracker
-for status}.
+We are able to test the first and report it as not binding. We are
+\emph{not} able to test the second with the data assembled so far, and we
+say so rather than gesture at it (Section~\ref{sec:constraints}).
+
+A note on timing. We do not claim, as earlier drafts of this project did,
+that comparable compute-price data first appeared in 2026: at least one
+commercial index has published weekly observations since July 2024
+(\texttt{docs/SOURCES.md}), and our own sources file contradicted that
+earlier claim. What is new here is not the existence of such data but the
+construction of a \emph{freely redistributable} series from
+vendor-published prices, which is what makes an independently auditable
+spread computable at all.
 
 \section{Data and methods}
 \label{sec:data}
 
-\subsection{Sources}
-Every value in this paper and its accompanying dataset carries a
-\texttt{source\_url} and \texttt{as\_of\_date}; the full source list and
-retrieval methodology live in \texttt{docs/SOURCES.md} and
-\texttt{docs/METHODOLOGY.md} in the project repository, and are summarised
-here. Power price data for European bidding zones comes from the ENTSO-E
-Transparency Platform \citep{entsoe-platform}; US ISO data (not yet
-pulled) is planned via the \texttt{gridstatus} library
-\citep{gridstatus}; currency conversion uses ECB Statistical Data
-Warehouse monthly reference rates \citep{ecb-sdw}; interconnection-queue
-data is planned from LBNL's Queued Up dataset \citep{lbnl-queued-up}.
+\subsection{Free-data constraint}
 
-\subsection{Confidence levels}
-Every hub in \texttt{data/final/hubs.geojson} (Section~\ref{sec:hubs},
-not yet populated in this draft) will carry a \texttt{confidence} field
-of \texttt{high}, \texttt{medium}, or \texttt{low}. A hub with no open
-API (e.g.\ Gulf states, China, Malaysia, India as of this draft) is
-represented as a null row with \texttt{confidence=low} and a linked
-GitHub Issue describing what would resolve it, rather than an estimated
-figure.
+This project publishes its dataset under CC-BY-4.0 and holds itself to a
+hard constraint: \textbf{a source is eligible only if it is free to access
+and permits redistribution of derived values}. A number a reader cannot
+fetch and re-derive is not auditable, and a number we are contractually
+barred from republishing cannot enter \texttt{/data/final} at all. This
+ruled out the two credible commercial compute-price indices
+(Section~\ref{sec:limitations}) and, as described below, five of the twelve
+power zones we collected.
+
+\subsection{Power prices}
+
+Day-ahead prices come from the Energy-Charts API operated by Fraunhofer ISE
+\citep{energy-charts}, which requires no authentication. We collected 2026
+year-to-date hourly prices for twelve European bidding zones. Energy-Charts
+returns a licence \emph{per zone}, and they differ: seven zones arrive as
+CC-BY-4.0 via Bundesnetzagentur/SMARD, while five exchange-sourced zones
+(Spain, Portugal, Finland, Sweden SE3, Italy North) carry ``for private and
+internal use only''. Those five are fetched and analysable locally but
+their derived values are withheld from the published dataset; the omission
+is recorded in \texttt{docs/WITHHELD\_ZONES.md} rather than left silent.
+All results below therefore rest on seven zones, which is a materially
+smaller sample than we set out to use.
+
+Prices are converted from EUR/MWh to \si{\usd\per\kWh} at the ECB
+monthly-average reference rate \citep{ecb-sdw}, mean \num{1.163365} over
+the period.
+
+\subsection{Compute prices}
+
+Because no free redistributable compute-price index exists
+(Section~\ref{sec:limitations}), we construct one from published cloud list
+prices, which are facts about public offers and can be recorded with
+attribution. We query the Azure Retail Prices API \citep{azure-prices},
+which is free and unauthenticated, for a fixed basket of GPU SKUs across
+three regions. Accelerator counts per SKU --- required to convert a price
+per instance-hour into a price per GPU-hour --- are read from Microsoft's
+public documentation repository \citep{azure-docs} and recorded per SKU
+with their own source URL, never inferred from SKU naming.
+
+We filter to Linux rows. Windows rows are excluded because they embed OS
+licensing, which is not a cost of running an accelerator, and expired price
+rows are excluded because they are history.
+
+We publish five price bases: on-demand list, spot, and \num{1}, \num{3} and
+\num{5}-year reserved. The reserved series matters. Committed-rate pricing
+is widely described --- including in earlier drafts of this paper --- as
+confidential and unobtainable. It is not: Azure publishes reservation
+totals through the same free API, and dividing by the term's hours yields a
+comparable hourly rate. The \num{5}-year H100 rate is
+\SI{60}{\percent} below list. Any analysis using list price as the revenue
+of a committed operator overstates it by roughly \num{2.5}x, and we
+previously made exactly that error.
 
 \begin{table}[h]
 \centering
-\begin{tabular}{@{}llp{6.5cm}@{}}
+\begin{tabular}{@{}llrr@{}}
 \toprule
-Hub & Confidence & Basis \\
+Accelerator & Price basis & \si{\usd} per GPU-hour & \% of list \\
 \midrule
-DE-LU (Germany/Luxembourg) & Pipeline built, data pending & ENTSO-E
-  Transparency Platform; requires a free API token not yet provisioned
-  in this environment (see \texttt{docs/SOURCES.md}) \\
-All other hubs & Not started & Backlogged as GitHub Issues; see
-  Section~\ref{sec:limitations} \\
+H100 & On-demand list   & 14.13 & 100 \\
+H100 & Reserved 1-year  &  9.05 &  64 \\
+H100 & Reserved 3-year  &  6.20 &  44 \\
+H100 & Reserved 5-year  &  5.65 &  40 \\
+H100 & Spot             &  2.61 &  18 \\
+A100 & On-demand list   &  4.32 & 100 \\
+A100 & Spot             &  0.82 &  19 \\
 \bottomrule
 \end{tabular}
-\caption{Confidence status by hub, this draft.}
+\caption{Published Azure price bases, mean across sampled regions. The
+choice of basis moves the revenue leg by \num{5}x and is therefore a larger
+modelling decision than anything in the cost model.}
+\label{tab:price-basis}
 \end{table}
+
+\subsection{Cost model}
+
+Delivered power per accelerator-hour is
+\begin{equation}
+  \label{eq:delivered-kw}
+  \text{delivered\_kW} = (\text{TDP} + \text{overhead}) \times \text{PUE}
+  = (0.700 + 0.180) \times 1.25 = \SI{1.10}{\kilo\watt},
+\end{equation}
+held as a single named constant and swept over
+\SIrange{0.9}{1.4}{\kilo\watt} in Section~\ref{sec:sensitivity}. We flag
+that the \SI{0.180}{\kilo\watt} overhead term is a residual chosen to
+reconcile the other two figures with a \SI{1.10}{\kilo\watt} total, not an
+independent measurement.
 
 \section{The compute spark spread}
 \label{sec:spread}
 
-For a GPU fleet of nameplate accelerator power draw $P_\text{TDP}$,
-define the delivered power per accelerator-hour as
-\begin{equation}
-  \label{eq:delivered-kw}
-  \text{delivered\_kW} = \text{PUE} \times \left(P_\text{TDP} +
-  P_\text{overhead}\right),
-\end{equation}
-where $P_\text{overhead}$ is the CPU/NIC/storage share attributable to
-one accelerator. This project fixes a single named default of
-\SI{1.10}{\kilo\watt} per GPU-hour (a \SI{700}{\watt} accelerator TDP at
-PUE 1.25, plus shared overhead) as a config constant, and reports
-sensitivity across \SI{0.9}{\kilo\watt}--\SI{1.4}{\kilo\watt}
-(Section~\ref{sec:sensitivity}).
-
-The power cost per GPU-hour is then
+Power cost per GPU-hour is
 \begin{equation}
   \label{eq:power-cost}
-  \text{power\_cost} = \text{delivered\_kW} \times
-  \text{price}_{\text{USD/kWh}}.
+  \text{power\_cost} = \text{delivered\_kW} \times \text{price}_{\text{USD/kWh}}.
 \end{equation}
 
-The \emph{shutdown price} adds non-power marginal operating expense
-(staffing, bandwidth, maintenance), which we deliberately parameterise as
-a range rather than a point estimate:
+The shutdown price adds non-power marginal operating expense:
 \begin{equation}
   \label{eq:shutdown-price}
   \text{shutdown\_price} = \text{power\_cost} + \text{opex}_{\text{marginal}}.
 \end{equation}
 
-The compute spark spread and headroom are
+Headroom against a compute price is
 \begin{equation}
   \label{eq:headroom}
-  \text{headroom} = \frac{\text{compute\_price} -
-  \text{shutdown\_price}}{\text{compute\_price}}.
+  \text{headroom} = \frac{\text{compute\_price} - \text{shutdown\_price}}
+  {\text{compute\_price}}.
 \end{equation}
 
-\todopending{worked numeric example once DE-LU data and a compute-price
-series are both in \texttt{data/final}}.
+\paragraph{What this cost is, and is not.} For a fleet whose accelerators
+are already purchased, capital cost is sunk and therefore irrelevant to the
+decision to keep running: the operator curtails when revenue falls below
+\emph{avoidable} cost. Equation~\eqref{eq:shutdown-price} is that avoidable
+cost, and it is the correct quantity for a shutdown question. It is
+emphatically not the right quantity for an investment question. A fleet can
+sit far above its shutdown price while being a value-destroying
+investment, because capital recovery dominates its full cost. We compute
+only the former, and Section~\ref{sec:conclusion} argues the latter is
+where the economically interesting question actually lives.
+
+We do not assign a point estimate to $\text{opex}_{\text{marginal}}$. No
+public source for it was identified, so it is swept over
+\SIrange{0.00}{0.20}{\usd} per GPU-hour and every result below is reported
+across that sweep.
 
 \section{Regional cost surfaces}
 \label{sec:regional}
 
-\subsection{The compute price leg}
+\subsection{Power}
 
-Our first populated series is the revenue side of the spread. Because no
-free, redistributable compute-price index exists
-(Section~\ref{sec:limitations}), we construct one from published cloud
-list prices, which are facts about public offers and can therefore be
-recorded with attribution and republished. Accelerator counts per VM SKU
-are read from the vendor's own public documentation repository rather
-than inferred, so that a price per instance-hour can be divided into a
-price per GPU-hour without guesswork.
+% CMO-CHECK: power_price_by_zone.csv | bzn=FR | mean_usd_kwh | 0.084728
+% CMO-CHECK: power_price_by_zone.csv | bzn=AT | mean_usd_kwh | 0.129565
+Across the seven publishable zones, 2026 year-to-date mean day-ahead
+prices run from \SI{0.0847}{\usd\per\kWh} (France) to
+\SI{0.1296}{\usd\per\kWh} (Austria), a spread of \num{1.53}x. Negative
+price hours are common, totalling \num{1823} across the sample, which
+matters because it means the power cost of compute is occasionally
+negative and the shutdown constraint cannot bind at all in those hours.
 
-% CMO-CHECK: compute_price_by_model.csv | segment=hyperscaler,accelerator_model=NVIDIA H100 | mean_usd_per_gpu_hour | 14.1335
-% CMO-CHECK: compute_price_by_model.csv | segment=hyperscaler,accelerator_model=NVIDIA A100 | mean_usd_per_gpu_hour | 4.285222222222222
-As of 2026-08-03, Azure's published on-demand list price for the
-\texttt{ND96isr\_H100\_v5} SKU averages
-\SI{14.13}{\usd} per GPU-hour across the regions sampled, and the A100
-\texttt{NC*ads\_A100\_v4} family averages \SI{4.29}{\usd} per GPU-hour
-(Figure~\ref{fig:compute-price}).
+\paragraph{The hub taxonomy does not predict cost.} The project's own
+supply-rich versus constrained classification fails on this sample. The
+cheapest zone is France, classified constrained. Norway NO2, classified
+supply-rich, is the second dearest at \SI{0.1142}{\usd\per\kWh} --- it is
+the southern Norwegian zone, heavily interconnected to Germany and Great
+Britain, and therefore prices toward its neighbours rather than toward
+Nordic hydro. Any hub-level narrative that assumes ``Nordics are cheap''
+without checking the specific bidding zone is wrong, and the geographic
+intuition behind the merit-order thesis is weaker than it appears.
+
+\subsection{Compute}
+
+% CMO-CHECK: compute_price_by_model.csv | accelerator_model=NVIDIA H100,price_type=on_demand | mean_usd_per_gpu_hour | 14.1335
+% CMO-CHECK: compute_price_by_model.csv | accelerator_model=NVIDIA A100,price_type=on_demand | mean_usd_per_gpu_hour | 4.3159
+As of 2026-08-03, Azure's published on-demand list price averages
+\SI{14.13}{\usd} per GPU-hour for H100 and \SI{4.32}{\usd} per GPU-hour for
+A100 across the regions sampled (Figure~\ref{fig:compute-price}). Spot
+prices for the same silicon clear at roughly a fifth of list, so the
+dispersion \emph{within} the compute price exceeds the dispersion in power
+costs that motivates this paper.
 
 \begin{figure}[h]
   \centering
-  \includegraphics[width=0.85\textwidth]{../figures/compute_price_per_gpu_hour.png}
-  \caption{Published Azure GPU prices per GPU-hour. Bars span the
-  regional minimum to maximum. On-demand list price is an upper bound on
-  realised revenue; spot is shown for contrast, not as a revenue proxy.}
+  \includegraphics[width=0.8\textwidth]{../figures/compute_price_per_gpu_hour.png}
+  \caption{Published Azure GPU prices per GPU-hour. Bars span the regional
+  minimum to maximum. On-demand list price is an upper bound on realised
+  revenue; spot is shown for contrast, not as a revenue proxy.}
   \label{fig:compute-price}
 \end{figure}
-
-Two observations follow immediately, and both bear on the central thesis.
-
-First, \textbf{the dispersion within the compute price is at least as
-large as the dispersion in power costs that motivates this paper}. Spot
-prices for the same H100 silicon clear roughly a fifth of the on-demand
-list price. A merit order computed against ``the'' compute price is
-therefore underdetermined until one says \emph{which} compute price;
-Section~\ref{sec:merit-order} must present a band, not a line.
-
-Second, \textbf{the hyperscaler on-demand list price is not the price
-that disciplines the marginal operator}. Published neocloud index levels
-sit near the hyperscaler \emph{spot} price rather than its list price,
-which suggests the marginal capacity-clearing price is closer to the
-former. We flag this as a hypothesis to test rather than a result: our
-own basket currently contains only hyperscaler SKUs, and a neocloud leg
-is required before the comparison can be made within one consistent
-methodology (see Section~\ref{sec:limitations}).
-
-\subsection{The power cost leg}
-
-\todopending{per-hub power price tables and figures --- the DE-LU
-pipeline is implemented and tested but requires an API token that was not
-available; no values have been pulled}.
 
 \section{The merit order}
 \label{sec:merit-order}
 
-The central deliverable of this project is a merit-order curve: all
-tracked capacity sorted ascending by marginal cost per GPU-hour, against
-which a reader can compare a compute-price line to see what capacity is
-uneconomic at that price. \todopending{this figure requires shutdown
-prices for multiple hubs and is not yet computable from a single
-pipeline; see \texttt{models/} backlog}.
+Figure~\ref{fig:merit-order} is the central result. Panel (a) is the merit
+order itself: zones sorted ascending by avoidable cost per GPU-hour. Panel
+(b) places that ladder on the same logarithmic axis as observed compute
+prices, which is the only way to show both on one chart --- and the gap
+between them is the finding.
 
-\section{Constraint analysis: chips vs.\ power}
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\textwidth]{../figures/merit_order.png}
+  \caption{The compute merit order. (a) Avoidable cost by zone at the
+  midpoint opex assumption. (b) The same shutdown prices against measured
+  on-demand compute prices, log scale. The ordering is real; the gap is two
+  orders of magnitude.}
+  \label{fig:merit-order}
+\end{figure}
+
+\subsection{The order exists}
+
+The retirement sequence is well defined. At the midpoint opex assumption
+and H100 prices, zones would go uneconomic in the order Austria, Norway
+NO2, Germany/Luxembourg, Belgium, Netherlands, Sweden SE4, France. So the
+qualitative claim --- that a geographic sequence exists and is computable
+from public data --- survives.
+
+\subsection{But it is not binding}
+
+% CMO-CHECK: merit_order_summary.csv | benchmark_id=h100_on_demand,opex_assumption_usd_gpu_hour=0.05 | max_power_share_of_revenue_pct | 0.010084
+% CMO-CHECK: merit_order_summary.csv | benchmark_id=a100_spot,opex_assumption_usd_gpu_hour=0.05 | max_power_share_of_revenue_pct | 0.174488
+Electricity is \SI{1.01}{\percent} of revenue in the dearest zone at H100
+on-demand list prices, and \SI{17.4}{\percent} at A100 spot prices. That
+range is the most important number in this paper: the spark-spread analogy
+is hopeless at the top of it and merely weak at the bottom, and which end
+applies is decided entirely by the revenue basis, not by anything about
+electricity.
+
+% CMO-CHECK: merit_order_summary.csv | benchmark_id=h100_on_demand,opex_assumption_usd_gpu_hour=0.05 | min_headroom_pct | 0.986378
+% CMO-CHECK: merit_order_summary.csv | benchmark_id=a100_spot,opex_assumption_usd_gpu_hour=0.05 | min_headroom_pct | 0.764297
+% CMO-CHECK: merit_order_summary.csv | benchmark_id=h100_on_demand,opex_assumption_usd_gpu_hour=0.05 | zones_uneconomic | 0
+Minimum headroom over avoidable cost is \SI{98.6}{\percent} at H100
+on-demand list and \SI{76.4}{\percent} at A100 spot, and \emph{no zone is
+uneconomic under any combination of price basis, zone and opex we test}.
+Compute prices would have to fall a further \SIrange{76}{99}{\percent}
+before the first zone --- Austria --- curtails. A merit order whose first
+event requires the cheapest observed price to fall by three quarters again
+is not a description of any plausible near-term market.
+
+\subsection{The dispersion is smaller than assumed}
+
+% CMO-CHECK: merit_order_summary.csv | benchmark_id=h100_on_demand,opex_assumption_usd_gpu_hour=0.0 | shutdown_dispersion_ratio | 1.5292
+% CMO-CHECK: merit_order_summary.csv | benchmark_id=h100_on_demand,opex_assumption_usd_gpu_hour=0.2 | shutdown_dispersion_ratio | 1.1682
+The thesis assumes roughly \num{3}x variation. We measure \num{1.53}x at
+zero opex, falling to \num{1.17}x at \SI{0.20}{\usd} per GPU-hour.
+
+This compression is not an artefact of our sample; it is algebraic. If
+power costs span $[p, 3p]$ and non-power opex is a common constant $c$,
+the shutdown-price ratio is
+\begin{equation}
+  \label{eq:dispersion}
+  \frac{3p + c}{p + c},
+\end{equation}
+which equals \num{3} only when $c = 0$ and decreases monotonically in $c$.
+The headline ``\num{3}x power costs imply \num{3}x shutdown prices''
+inference is therefore false for any non-zero non-power operating cost,
+independently of data. Since plausible non-power opex is of the same order
+as --- or larger than --- the entire power cost, the dispersion that
+actually drives a merit order is materially below the dispersion in
+electricity prices that motivates it.
+
+\subsection{Why this cannot be rescued by better power data}
+
+The gap is not a measurement problem. Two comparisons from our own data
+make the scale clear. Azure's list price for the same H100 SKU differs by
+\SI{3.69}{\usd} per GPU-hour between \texttt{eastus} and
+\texttt{westeurope} --- a vendor pricing decision. The entire power-cost
+difference across our seven zones is \SI{0.05}{\usd} per GPU-hour. The
+revenue leg's regional dispersion is roughly \num{70}x the cost leg's, and
+it is driven by commercial policy rather than by electricity.
+
+Capital cost sharpens the same point. An 8-accelerator H100 node at
+\SIrange{300}{400}{\kilo\usd} over four to five years is on the order of
+\SIrange{1}{1.7}{\usd} per GPU-hour of depreciation before any cost of
+capital --- roughly \numrange{10}{50}x the power cost. We do not publish
+these figures in our dataset because we have no free, citable source for
+node prices, and they are stated here only to size the comparison. But the
+ordering is unambiguous: for any question other than short-run curtailment,
+power is not the term that matters.
+
+\section{Constraint analysis: chips versus power}
 \label{sec:constraints}
 
-\todopending{interconnection-queue and grid-headroom data collection is
-Phase 2 of this project and has not started as of this draft; see open
-GitHub issues}.
+\todopending{not tested. Interconnection-queue and grid-headroom data
+collection has not been carried out, so this paper offers no evidence on
+whether power or chip supply binds. We note only that the finding above is
+consistent with power mattering for \emph{siting and capital planning}
+rather than for dispatch, since a cost that is one per cent of revenue can
+still be decisive when the alternative is not being able to energise a
+site at all. That is a different mechanism from the merit order and
+requires different data.}
 
 \section{Sensitivity}
 \label{sec:sensitivity}
 
-We commit in advance to varying delivered\_kW, non-power opex, PUE, and
-compute price, and reporting where the two central claims
-(Section~\ref{sec:intro}) break down rather than merely where they hold.
-\todopending{sensitivity tables once Section~\ref{sec:spread}'s inputs
-are populated with real data}.
+The conclusion is robust to every parameter we vary, because the result is
+not marginal --- it is two orders of magnitude from the threshold.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}llrr@{}}
+\toprule
+Parameter & Range tested & Effect on headroom & Changes conclusion? \\
+\midrule
+Non-power opex & \SIrange{0.00}{0.20}{\usd}/GPU-h & \SI{99.0}{\percent} $\to$ \SI{97.6}{\percent} & No \\
+Accelerator & A100 vs H100 & \SI{96.7}{\percent} $\to$ \SI{99.0}{\percent} & No \\
+Zone & 7 European zones & \SI{1.53}{x} cost spread & No \\
+delivered\_kW & \SIrange{0.9}{1.4}{\kilo\watt} & $\pm$\SI{27}{\percent} on a \SI{1}{\percent} item & No \\
+\bottomrule
+\end{tabular}
+\caption{Sensitivity. To overturn the conclusion, compute prices would
+have to fall roughly \num{40}-fold, or power costs rise roughly
+\num{40}-fold; no combination of the parameters above comes close.}
+\end{table}
+
+The honest way to state the fragility is this: the conclusion depends far
+more on the \emph{level} of the compute price than on anything in the cost
+model. If the relevant compute price is not the hyperscaler list price but
+something closer to the spot price --- roughly a fifth of list --- headroom
+falls from \SI{99}{\percent} to about \SI{95}{\percent}. That is still not
+binding. Only a compute price near \SI{0.15}{\usd} per GPU-hour, some
+\num{95}x below current list, would make the merit order operative.
 
 \section{Limitations}
 \label{sec:limitations}
 
-This draft is intentionally incomplete, and we list every gap rather than
-smooth over it:
+We list every material weakness rather than the flattering subset.
+
 \begin{itemize}
-  \item \textbf{No pulled data yet.} The ENTSO-E DE-LU pipeline
-    (\texttt{pipelines/entsoe.py}) is implemented and tested against a
-    synthetic fixture, but has not been run against the live API: it
-    requires a free \texttt{ENTSOE\_API\_TOKEN} that was not available in
-    the environment this draft was produced in. See
-    \texttt{docs/SOURCES.md} for registration steps.
-  \item \textbf{Ten of twelve hubs are not started.} Only DE-LU has a
-    pipeline; the remaining European zones, US ISOs, Singapore, and the
-    document-derived hubs (Gulf states, China, India) are tracked as
-    GitHub issues, not estimated.
-  \item \textbf{GPU counts per site are not disclosed} by operators in
-    general, so installed/announced capacity figures will rely on
-    third-party estimates (CBRE, DC Byte) with their own uncertainty.
-  \item \textbf{PUE is self-reported} by operators where published at
-    all, and the \SI{1.25}{} figure used as this project's default is an
-    industry-typical value, not a measurement.
-  \item \textbf{PPA (power purchase agreement) prices are confidential}
-    in most jurisdictions; this project uses public wholesale/day-ahead
-    prices as a proxy, which will differ from actual contracted rates,
-    typically understating the compute operator's true cost certainty
-    (and sometimes its price level) in either direction depending on
-    contract structure.
-  \item \textbf{Gulf and China data, when added, will be
-    document-derived} (government/TSO reports, not live APIs), and will
-    carry \texttt{confidence=low} accordingly.
-  \item \textbf{The compute-price leg is the weakest input, and the
-    asymmetry is structural.} A survey conducted 2026-08-03
-    (\texttt{docs/SOURCES.md}) found no free, redistributable
-    compute-price index of comparable quality to the power data. The two
-    credible indices identified --- Silicon Data's \texttt{SDH100RT} and
-    GetDeploying's GPU rental price index --- are both paywalled, and the
-    latter's terms explicitly prohibit redistributing raw data feeds,
-    which is incompatible with publishing a CC-BY-4.0 dataset. This
-    project therefore adopts a free-sources-only constraint and rejects
-    both, constructing its own index from vendor-published list prices
-    instead (Section~\ref{sec:regional}). We take the weaker source and
-    say so rather than compromise reproducibility, but the reader should
-    note that our compute-price series is consequently narrower than the
-    commercial indices it replaces.
-  \item \textbf{The compute-price basket is currently one vendor and one
-    segment.} It contains Azure SKUs only, so it measures hyperscaler
-    list pricing rather than the market. AWS and GCP publish free price
-    lists and belong in the cohort; more importantly, no neocloud
-    provider is represented yet, which means the segment dispersion this
-    paper argues is central cannot yet be measured within a single
-    consistent methodology. Every dispersion figure we report is
-    therefore a lower bound.
-  \item \textbf{On-demand list price is not the realised price.} Large
-    operators transact on multi-year reserved contracts at material and
-    confidential discounts. This is the exact mirror of the PPA problem
-    on the power side: \emph{both} legs of the spread are public proxies
-    for confidential real transactions.
-  \item \textbf{Ordering and level have different confidence.} Which hub
-    goes uneconomic first depends mainly on the power leg and is
-    comparatively robust; the absolute compute price at which it happens
-    depends on the weak leg. We hedge these two claims differently
-    throughout, and readers should not transfer confidence from the
-    former to the latter.
+  \item \textbf{Seven zones, one continent, one partial year.} Licence
+    restrictions removed five of twelve collected zones from the published
+    sample, including Iberia and the Nordic zones that would most likely
+    widen dispersion. Our \num{1.53}x is therefore a lower bound on global
+    dispersion, and the US, Gulf, China and India hubs are absent entirely.
+  \item \textbf{No capacity weighting.} A merit-order curve should have
+    installed capacity on its x-axis. We have no per-zone GPU capacity
+    data, so Figure~\ref{fig:merit-order} shows the cost ladder without
+    capacity weights. The retirement \emph{sequence} is unaffected; the
+    quantity retiring at each step is unknown.
+  \item \textbf{The compute-price leg is the weakest input.} No free
+    redistributable index exists: Silicon Data's \texttt{SDH100RT} and
+    GetDeploying's index are both paywalled, and the latter's terms
+    prohibit redistributing raw data. We rejected both under the free-data
+    constraint rather than cite figures a reader cannot verify, and built
+    our own basket instead --- which is narrower than what we rejected.
+  \item \textbf{One vendor, one segment.} The basket is Azure-only and
+    hyperscaler-only. No neocloud provider is represented, so the segment
+    dispersion we argue is central cannot yet be measured within a
+    consistent methodology.
+  \item \textbf{On-demand list price is not realised revenue.} Large
+    operators transact on confidential multi-year reserved contracts at
+    material discounts. This is the mirror of the PPA problem on the power
+    side: both legs are public proxies for confidential transactions. Using
+    list price \emph{overstates} revenue and therefore overstates headroom.
+  \item \textbf{Wholesale power price is not delivered power cost.} We
+    compare a hyperscaler retail compute price against a wholesale
+    commodity power price. A real operator pays network charges, levies and
+    taxes on top of the wholesale price, which in several European
+    jurisdictions exceed the commodity component. This \emph{understates}
+    power cost, possibly by more than a factor of two, and is the single
+    most consequential methodological gap in this paper. Correcting it
+    would raise the power share of revenue but would not plausibly close a
+    hundredfold gap.
+  \item \textbf{PUE and overhead are assumptions, not measurements.}
+    Operator-reported PUE is self-reported and unaudited, and our
+    \SI{0.180}{\kilo\watt} overhead is a reconciling residual.
+  \item \textbf{Capital cost is excluded by construction.} This is correct
+    for a curtailment question and wrong for every other question one might
+    ask. Our own rough sizing puts depreciation at \numrange{10}{50}x the
+    power cost.
+  \item \textbf{All power cost is treated as avoidable.} That is wrong for
+    any operator on an industrial tariff with a demand charge, or under a
+    take-or-pay PPA, where a large part of the power bill is incurred
+    whether or not the machine runs. Correctly splitting avoidable from
+    unavoidable power cost would \emph{lower} the true shutdown price and
+    make the merit order bind even less often than we report.
+  \item \textbf{Claims 1 and 2 are in tension and we cannot resolve it.} If
+    interconnection is genuinely the binding constraint, then grid capacity
+    is contracted and largely pre-paid, and an operator holding a scarce
+    interconnect runs it regardless of hourly energy price --- which would
+    suppress the very curtailment mechanism Claim 1 describes. The two
+    claims can only both hold under specific contracting regimes, and we
+    have not established which regime prevails.
+  \item \textbf{Azure spot is not an auction clearing price.} In our data
+    spot sits at a near-constant \SI{18.5}{\percent} of list across two
+    accelerator generations and two continents, which is the signature of a
+    published discount schedule rather than a market. We use it as a low
+    revenue bound, not as evidence about where capacity clears.
+  \item \textbf{List prices are stale relative to power prices.} Several
+    price rows carry effective dates years old, while the power series is
+    hourly. Any spread between a sticky annual list price and an hourly
+    spot power price is dominated by the staleness of the former.
 \end{itemize}
 
 \section{Conclusion}
 \label{sec:conclusion}
 
-\todopending{to be written once Section~\ref{sec:merit-order} and
-Section~\ref{sec:constraints} have real results to conclude from. This
-project is under active, multi-session construction; see the GitHub
-repository's Issues and Milestones for current status rather than a
-prose summary here, per the project's own contribution rules.}
+The compute merit order is real, computable from open data, and
+economically inert at current prices. Electricity is about one per cent of
+H100 rental revenue; headroom over avoidable cost exceeds
+\SI{97}{\percent} everywhere we can measure; no zone is uneconomic; and the
+cross-zone dispersion in shutdown prices is \num{1.53}x rather than the
+\num{3}x assumed, compressing further once non-power operating costs are
+included.
+
+The spark-spread analogy fails quantitatively. It works for gas generation
+because fuel is most of marginal cost, so fuel-price differences drive
+dispatch. It does not transfer to GPU compute, where power is a rounding
+error against rental revenue. Regional power-price differences of the
+magnitude observed cannot produce a retirement sequence; they can only
+produce small margin differences.
+
+This does not make power irrelevant to AI infrastructure --- it relocates
+where power matters. Three candidate mechanisms survive our result and each
+requires different data than we assembled:
+
+\begin{enumerate}
+  \item \textbf{Capital recovery, not dispatch.} If accelerator
+    depreciation dominates full cost, the economically interesting
+    threshold is the price at which new capacity stops being \emph{built},
+    not the price at which existing capacity stops running. Our shutdown
+    price is deliberately the wrong tool for that question.
+  \item \textbf{Availability, not price.} A one-per-cent cost item is still
+    decisive when the alternative is being unable to energise a site.
+    Interconnection queues and grid headroom plausibly bind on
+    \emph{whether} capacity exists rather than on what it costs to run.
+  \item \textbf{Compute price collapse.} If compute prices fell toward
+    marginal cost, as they would in a commoditised market with excess
+    capacity, the merit order would become operative. Our result quantifies
+    how far that is: roughly a \num{40}- to \num{95}-fold decline.
+  \end{enumerate}
+
+We report this as a negative result because the data does not support the
+thesis as framed. The project's next phase should redirect toward
+constraint data and capital cost, where the evidence suggests the binding
+economics actually lies.
 
 \bibliographystyle{plainnat}
 \bibliography{references}

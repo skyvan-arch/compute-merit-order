@@ -1,0 +1,1 @@
+- eurusd_2026.csv: https://data-api.ecb.europa.eu/service/data/EXR/M.USD.EUR.SP00.A?format=csvdata&startPeriod=2026-01&endPeriod=2026-12 (fetched 2026-08-03)

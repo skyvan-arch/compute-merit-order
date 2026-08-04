@@ -95,6 +95,17 @@ def fetch_sku_prices(
     return payload, source_url
 
 
+#: Hours in each Azure reservation term. Reservation rows quote the TOTAL
+#: cost of the term, so converting to an hourly rate needs these explicitly.
+#: 365-day years; Azure prices terms as whole years and does not price leap
+#: days separately.
+RESERVATION_TERM_HOURS: dict[str, int] = {
+    "1 Year": 8_760,
+    "3 Years": 26_280,
+    "5 Years": 43_800,
+}
+
+
 def _classify_price_type(sku_name: str) -> str | None:
     """Map an Azure skuName to our price_type, or None if we don't price it.
 
@@ -110,27 +121,46 @@ def _classify_price_type(sku_name: str) -> str | None:
     return "on_demand"
 
 
+def _reserved_price_type(term: str) -> str:
+    """Normalise an Azure reservationTerm into a price_type label."""
+    return "reserved_" + term.lower().replace(" ", "").replace("years", "yr").replace("year", "yr")
+
+
 def parse_price_rows(
-    payload: dict[str, Any], sku: GpuSku, region: str, price_source_url: str
+    payload: dict[str, Any],
+    sku: GpuSku,
+    region: str,
+    price_source_url: str,
+    *,
+    as_of: datetime | None = None,
 ) -> list[PriceObservation]:
     """Extract the priceable rows for one SKU+region.
 
+    `as_of` fixes both the recorded as_of_date and the cutoff used to drop
+    expired price rows. It is a parameter rather than `datetime.now()` so that
+    re-parsing the same cached payload gives the same answer on any day —
+    without it the pipeline is not reproducible, which is a guarantee this
+    project makes explicitly (docs/METHODOLOGY.md).
+
     Filters applied, each for a stated reason:
-      - type == 'Consumption'   : excludes Reservation (a different product,
-                                  quoted as a total not an hourly rate) and
-                                  DevTestConsumption (eligibility-restricted)
       - productName excludes Windows : Windows rows embed OS licensing, which
                                   is not a cost of running an accelerator
-      - unitOfMeasure == '1 Hour' : we publish an hourly series
+      - DevTestConsumption dropped : eligibility-restricted pricing
       - currently effective      : rows whose effectiveEndDate has passed are
                                   historical and must not be read as current
+
+    Both Consumption rows (on-demand, spot) and Reservation rows are kept.
+    Reservation rows quote the TOTAL cost of the term, so they are divided by
+    the term's hours to reach a comparable hourly rate; they are the closest
+    public proxy for what a committed operator actually pays.
     """
-    as_of_date = datetime.now(UTC).date().isoformat()
-    now = datetime.now(UTC)
+    moment = as_of or datetime.now(UTC)
+    as_of_date = moment.date().isoformat()
 
     observations: list[PriceObservation] = []
     for item in payload.get("Items", []):
-        if item.get("type") != "Consumption":
+        row_type = item.get("type")
+        if row_type not in {"Consumption", "Reservation"}:
             continue
         if item.get("unitOfMeasure") != "1 Hour":
             continue
@@ -138,14 +168,26 @@ def parse_price_rows(
             continue
 
         end_date = item.get("effectiveEndDate")
-        if end_date and datetime.fromisoformat(end_date.replace("Z", "+00:00")) < now:
+        if end_date and datetime.fromisoformat(end_date.replace("Z", "+00:00")) < moment:
             continue
 
-        price_type = _classify_price_type(str(item.get("skuName", "")))
-        if price_type is None:
-            continue
+        raw_price = float(item["retailPrice"])
 
-        instance_price = float(item["retailPrice"])
+        if row_type == "Reservation":
+            term = str(item.get("reservationTerm", ""))
+            term_hours = RESERVATION_TERM_HOURS.get(term)
+            if term_hours is None:
+                # An unrecognised term is skipped rather than guessed at.
+                continue
+            price_type = _reserved_price_type(term)
+            instance_hour_price = raw_price / term_hours
+        else:
+            classified = _classify_price_type(str(item.get("skuName", "")))
+            if classified is None:
+                continue
+            price_type = classified
+            instance_hour_price = raw_price
+
         observations.append(
             PriceObservation(
                 provider=sku.provider,
@@ -155,8 +197,8 @@ def parse_price_rows(
                 accelerator_count=sku.accelerator_count,
                 region=region,
                 price_type=price_type,
-                usd_per_instance_hour=instance_price,
-                usd_per_gpu_hour=instance_price / sku.accelerator_count,
+                usd_per_instance_hour=instance_hour_price,
+                usd_per_gpu_hour=instance_hour_price / sku.accelerator_count,
                 currency=str(item.get("currencyCode", "USD")),
                 effective_start_date=str(item.get("effectiveStartDate", "")),
                 price_source_url=price_source_url,
@@ -198,11 +240,30 @@ def summarise_by_model(df: pd.DataFrame) -> pd.DataFrame:
     neocloud list prices differ by a multiple, and that dispersion is the
     thing this project is trying to measure.
     """
-    on_demand = df[df["price_type"] == "on_demand"]
-    if on_demand.empty:
+    if df.empty:
         return pd.DataFrame()
 
-    grouped = on_demand.groupby(["segment", "accelerator_model"])["usd_per_gpu_hour"]
+    # De-duplicate pseudo-replicates before aggregating. Azure lists the same
+    # machine at 1/2/4-GPU sizes (NC24/NC48/NC96) which price identically per
+    # GPU-hour; counting all three would trumpet three "observations" where
+    # there is one independent price, and would understate any standard error
+    # a downstream user computes from this published dataset.
+    deduped = df.drop_duplicates(
+        subset=[
+            "provider",
+            "segment",
+            "accelerator_model",
+            "region",
+            "price_type",
+            "usd_per_gpu_hour",
+        ]
+    )
+
+    if deduped.empty:
+        return pd.DataFrame()
+
+    keys = ["segment", "accelerator_model", "price_type"]
+    grouped = deduped.groupby(keys)["usd_per_gpu_hour"]
     summary = grouped.agg(
         mean_usd_per_gpu_hour="mean",
         min_usd_per_gpu_hour="min",
@@ -211,7 +272,7 @@ def summarise_by_model(df: pd.DataFrame) -> pd.DataFrame:
     ).reset_index()
 
     meta = (
-        on_demand.groupby(["segment", "accelerator_model"])
+        deduped.groupby(keys)
         .agg(
             providers=("provider", lambda s: ",".join(sorted(set(s)))),
             regions=("region", lambda s: ",".join(sorted(set(s)))),
@@ -220,10 +281,18 @@ def summarise_by_model(df: pd.DataFrame) -> pd.DataFrame:
         )
         .reset_index()
     )
-    summary = summary.merge(meta, on=["segment", "accelerator_model"])
-    summary["price_basis"] = "published_on_demand_list"
+    summary = summary.merge(meta, on=keys)
+    summary["price_basis"] = "published_" + summary["price_type"].astype(str) + "_list"
     summary["confidence"] = "high"
-    return summary
+    # Round to 4 significant figures. Publishing 4.285222222222222 from inputs
+    # that disagree in the 4th figure asserts precision the data cannot carry.
+    for col in (
+        "mean_usd_per_gpu_hour",
+        "min_usd_per_gpu_hour",
+        "max_usd_per_gpu_hour",
+    ):
+        summary[col] = summary[col].astype(float).round(4)
+    return summary.sort_values(keys).reset_index(drop=True)
 
 
 def write_final(df: pd.DataFrame, summary: pd.DataFrame) -> tuple[Path, Path]:
