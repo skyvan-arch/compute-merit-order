@@ -68,6 +68,30 @@ VARIABLE_TYPES: frozenset[str] = frozenset(
     {"Wind onshore", "Wind offshore", "Solar", "Hydro Run-of-River"}
 )
 
+#: Installed-capacity series that must never enter a capacity total. The
+#: installed_power endpoint is NOT schema-consistent across countries and this
+#: is the single largest data-quality hazard in this module:
+#:   * "... planned (EEG 2023)" rows are POLICY TARGETS, not installed plant.
+#:     Germany exposes ~157 GW of them.
+#:   * "Solar DC" and "Solar AC" are the SAME fleet measured either side of
+#:     the inverter. Summing both double-counts ~100 GW. We keep AC, the
+#:     grid-facing figure.
+#:   * "Battery storage (capacity)" is energy in GWh, not power in GW.
+#:     Adding it to a GW total is a unit error.
+#: A naive sum over Germany's rows gives 683 GW against a true installed base
+#: of roughly 250 GW. Capacity totals are therefore reported with an explicit
+#: quality flag and are NOT used for any headline claim.
+INSTALLED_EXCLUDE_SUBSTRINGS: tuple[str, ...] = (
+    "planned",
+    "Solar DC",
+    "storage (capacity)",
+)
+
+
+def _is_excluded_installed(name: str) -> bool:
+    return any(x.lower() in name.lower() for x in INSTALLED_EXCLUDE_SUBSTRINGS)
+
+
 #: Series that are not generation and must never be summed into a mix.
 NON_GENERATION: frozenset[str] = frozenset(
     {
@@ -217,10 +241,30 @@ def summarise_installed(payload: dict[str, Any], hub: Hub, source_url: str) -> d
     times = payload.get("time", [])
     if not times:
         raise GridFetchError(f"{hub.code}: no time axis in installed_power response")
-    idx = len(times) - 1
+
+    # Some countries publish FORWARD TARGETS on this endpoint: Germany's axis
+    # runs to 2030. Taking the last entry silently substituted a 2030 policy
+    # scenario for present capacity, which made Germany appear to have 282 GW
+    # of headroom -- by far the largest in Europe -- and reported its firm and
+    # nuclear capacity as zero because projection rows omit those types.
+    # Select the latest year that is not in the future AND carries data.
+    current_year = datetime.now(UTC).year
+    series = payload.get("production_types", [])
+
+    def populated(i: int) -> bool:
+        return any(i < len(s.get("data", [])) and s["data"][i] not in (None, 0) for s in series)
+
+    candidates = [i for i, t in enumerate(times) if str(t).isdigit() and int(t) <= current_year]
+    usable = [i for i in candidates if populated(i)]
+    if not usable:
+        raise GridFetchError(
+            f"{hub.code}: no non-future installed_power year with data (axis {times})"
+        )
+    idx = max(usable)
 
     total = 0.0
     firm = 0.0
+    excluded = 0.0
     by_type: dict[str, float] = {}
     for s in payload.get("production_types", []):
         name = str(s["name"])
@@ -229,6 +273,9 @@ def summarise_installed(payload: dict[str, Any], hub: Hub, source_url: str) -> d
             continue
         value = float(data[idx])
         by_type[name] = value
+        if _is_excluded_installed(name):
+            excluded += value
+            continue
         total += value
         if name in FIRM_TYPES:
             firm += value
@@ -240,6 +287,10 @@ def summarise_installed(payload: dict[str, Any], hub: Hub, source_url: str) -> d
         "installed_firm_gw": firm,
         "installed_firm_share": firm / total if total else float("nan"),
         "installed_nuclear_gw": by_type.get("Nuclear", 0.0),
+        "installed_excluded_gw": excluded,
+        "installed_is_current_year": str(times[idx]) == str(datetime.now(UTC).year - 1)
+        or str(times[idx]) == str(datetime.now(UTC).year),
+        "installed_confidence": "low",
         "installed_source_url": source_url,
     }
 

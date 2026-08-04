@@ -20,17 +20,26 @@ is doing the work. A hub is described by WHICH tests it fails.
   FIRMNESS    less than FIRM_LIMIT of generation is dispatchable. A 24/7
               load cannot be served by a grid whose surplus is variable,
               regardless of that grid's average price.
-  HEADROOM    installed capacity less peak load is under HEADROOM_LIMIT_GW.
-              A coarse proxy for physical room, and an optimistic one: it
-              counts nameplate capacity, so a wind-heavy grid looks roomier
-              than it is.
+  (HEADROOM   RETIRED as a binding test. Energy-Charts' installed_power
+              endpoint is not schema-consistent across countries: some
+              publish forward policy targets on the same axis as history
+              (Germany's runs to 2030), some double-count solar either side
+              of the inverter, and some mix battery GWh into a GW column. A
+              naive total gave Germany 683 GW against a real installed base
+              near 250. Excluding the known junk still leaves Germany's row
+              forward-looking. The column is retained in grid_structure.csv
+              with installed_confidence='low' and is used for NO claim.)
   IMPORT      the hub is a net electricity importer, so its prices are
               partly borrowed from neighbours and new load competes with
               existing demand for interconnector capacity.
-  PRICE       mean wholesale price in the most expensive third of the
-              sample. Listed last and weighted least on purpose: this is the
-              constraint the project set out to study and the one the
-              evidence demoted.
+  (PRICE      RETIRED as a binding test. It was defined as the most
+              expensive third OF THE SAMPLE, so exactly a third of hubs
+              failed it by construction regardless of the price level, and
+              it could never bind first because it was ordered last -- an
+              editorial choice, not a finding. Only 7 of 15 hubs have price
+              data at all. The price result is reported as a measured
+              dispersion ratio instead, which needs no threshold and cannot
+              be gamed by the choice of sample.)
 
 Thresholds are stated as named constants so a reader can disagree with a
 number rather than with a verdict.
@@ -54,7 +63,8 @@ POWER_CSV = FINAL_DIR / "power_price_by_zone.csv"
 ABSORPTION_LIMIT = 0.10
 #: Below this share of dispatchable generation, a 24/7 load is exposed.
 FIRM_LIMIT = 0.50
-#: Installed capacity minus peak load, below which there is little room.
+#: Retained for reference only; see the docstring for why HEADROOM is no
+#: longer a binding test.
 HEADROOM_LIMIT_GW = 10.0
 
 #: ISO2 codes for hubs, to join Energy-Charts country codes to World Bank.
@@ -116,21 +126,15 @@ def build() -> pd.DataFrame:
     # --- constraint tests -------------------------------------------------
     df["fails_absorption"] = df["one_gw_cluster_share_of_consumption"] > ABSORPTION_LIMIT
     df["fails_firmness"] = df["firm_share_of_generation"] < FIRM_LIMIT
-    df["fails_headroom"] = df["capacity_headroom_gw"] < HEADROOM_LIMIT_GW
     df["fails_import"] = ~df["is_net_exporter"].astype(bool)
 
-    if df["mean_usd_kwh"].notna().any():
-        price_cut = df["mean_usd_kwh"].quantile(2 / 3)
-        df["fails_price"] = df["mean_usd_kwh"] > price_cut
-    else:
-        df["fails_price"] = False
+    # Reported for transparency, excluded from the verdict: see docstring.
+    df["headroom_gw_low_confidence"] = df["capacity_headroom_gw"]
 
     test_cols = [
         "fails_absorption",
         "fails_firmness",
-        "fails_headroom",
         "fails_import",
-        "fails_price",
     ]
     df[test_cols] = df[test_cols].fillna(False).astype(bool)
     df["constraints_failed"] = df[test_cols].sum(axis=1)
@@ -142,9 +146,7 @@ def build() -> pd.DataFrame:
     order = [
         ("fails_absorption", "ABSORPTION"),
         ("fails_firmness", "FIRMNESS"),
-        ("fails_headroom", "HEADROOM"),
         ("fails_import", "IMPORT"),
-        ("fails_price", "PRICE"),
     ]
 
     def binding(row: pd.Series) -> str:
